@@ -10,5 +10,7 @@ public interface ChallengeRepository extends JpaRepository<Challenge, String> {
 
     Optional<Challenge> findFirstByUserIdAndSurveyNoodleNotNullOrderByCreatedAtDesc(String userId);
 
-    boolean existsByUserId(String userId);
+    List<Challenge> findByUserId(String userId);
+
+    List<Challenge> findByStatus(ChallengeStatus status);
 }

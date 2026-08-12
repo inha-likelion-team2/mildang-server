@@ -9,4 +9,8 @@ public interface ItemRepository extends JpaRepository<Item, String> {
 
     List<Item> findByChallengeIdAndKindAndStatusInOrderByCreatedAtDesc(
             String challengeId, ItemKind kind, List<ItemStatus> statuses);
+
+    List<Item> findByStatus(ItemStatus status);
+
+    List<Item> findByChallengeIdIn(List<String> challengeIds);
 }

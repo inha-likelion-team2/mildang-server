@@ -9,4 +9,6 @@ public interface CheckinRepository extends JpaRepository<Checkin, String> {
     Optional<Checkin> findByChallengeIdAndDate(String challengeId, LocalDate date);
 
     long countByChallengeId(String challengeId);
+
+    java.util.List<Checkin> findByChallengeIdIn(java.util.List<String> challengeIds);
 }
