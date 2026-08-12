@@ -80,6 +80,7 @@ public class ItemService {
 
         Item item = new Item();
         item.setId(Ids.next(Ids.Prefix.ITEM));
+        item.setUserId(userId);
         item.setChallengeId(challenge.getId());
         item.setKind(request.kind());
         item.setStatus(ItemStatus.PENDING);
@@ -129,33 +130,46 @@ public class ItemService {
         }
     }
 
-    /** 기록하기 — 잔액이 변하는 두 지점 중 하나 (§11 불변). 초과는 항상 허용. */
+    /**
+     * 기록하기 — 명세 §6.9 멱등 표.
+     * PENDING/HAGGLED/EXPIRED → 차감 · RECORDED → 멱등 · PREPAID → 전이만(prepaid→spent 이동, 잔액 불변) · CANCELED → 404
+     */
     @Transactional
     public RecordResponse record(String userId, String itemId) {
         Challenge challenge = challengeService.requireActive(userId);
         Item item = owned(challenge, itemId);
-        requireRecordable(item);
-
-        int before = challenge.getBalance();
         int effective = item.effectivePoints();
-        challenge.setBalance(before - effective);
-        challenge.setSpentTotal(challenge.getSpentTotal() + effective);
-        item.setStatus(ItemStatus.RECORDED);
-        item.setRecordedAt(Instant.now());
 
-        Overflow overflow = null;
-        if (challenge.getBalance() < 0) {
-            int originalWouldBe = before - item.getOriginalPoints();
-            int reducedBy = item.getOriginalPoints() - effective;
-            String note = reducedBy > 0
-                    ? "흥정으로 " + reducedBy + "만큼 덜 깊어졌어요."
-                    : "초과분은 리포트에 정직하게만 적어둘게요.";
-            overflow = new Overflow(challenge.getBalance(), originalWouldBe, reducedBy, note);
+        boolean alreadyProcessed;
+        switch (item.getStatus()) {
+            case PENDING, HAGGLED, EXPIRED -> {
+                int before = challenge.getBalance();
+                challenge.setBalance(before - effective);
+                challenge.setSpent(challenge.getSpent() + effective);
+                item.snapshotBalances(before, before - effective, before - item.getOriginalPoints());
+                item.setStatus(ItemStatus.RECORDED);
+                item.setRecordedAt(Instant.now());
+                alreadyProcessed = false;
+            }
+            case PREPAID -> {
+                // 선차감 시 이미 잔액 반영됨 — prepaid → spent 이동만 (§0.10: balance 불변)
+                challenge.setPrepaid(challenge.getPrepaid() - effective);
+                challenge.setSpent(challenge.getSpent() + effective);
+                item.setStatus(ItemStatus.RECORDED);
+                item.setRecordedAt(Instant.now());
+                alreadyProcessed = true;
+            }
+            case RECORDED -> alreadyProcessed = true;
+            default -> throw new ApiException(ErrorCode.NOT_FOUND);
         }
-        return new RecordResponse(view(item, challenge), challengeService.budgetView(challenge), overflow);
+
+        return new RecordResponse(view(item, challenge), challengeService.budgetView(challenge),
+                overflowOf(item), alreadyProcessed);
     }
 
-    /** 선차감 — 멱등 (2026-08-11 결정): 이미 PREPAID면 추가 차감 없이 현재 상태 반환. */
+    /**
+     * 선차감 — 명세 §6.9. PENDING/HAGGLED → 차감 · PREPAID → 멱등 · 그 외 종착 상태 → 409.
+     */
     @Transactional
     public PrepayResponse prepay(String userId, String itemId) {
         Challenge challenge = challengeService.requireActive(userId);
@@ -163,18 +177,40 @@ public class ItemService {
         if (item.getKind() != ItemKind.PROMISE) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "선차감은 약속 항목에만 할 수 있어요.", "id", null);
         }
-        if (item.getStatus() != ItemStatus.PREPAID) {
-            requireRecordable(item);
-            int effective = item.effectivePoints();
-            challenge.setBalance(challenge.getBalance() - effective);
-            challenge.setPrepaidTotal(challenge.getPrepaidTotal() + effective);
-            item.setStatus(ItemStatus.PREPAID);
-            if (challenge.getPeriod() == Period.W4) {
-                item.setTargetWeek(targetWeek(challenge, item.getWeekday()));
+
+        boolean alreadyProcessed;
+        switch (item.getStatus()) {
+            case PENDING, HAGGLED -> {
+                int effective = item.effectivePoints();
+                int before = challenge.getBalance();
+                challenge.setBalance(before - effective);
+                challenge.setPrepaid(challenge.getPrepaid() + effective);
+                item.snapshotBalances(before, before - effective, before - item.getOriginalPoints());
+                item.setStatus(ItemStatus.PREPAID);
+                item.setPrepaidAt(Instant.now());
+                if (challenge.getPeriod() == Period.W4) {
+                    item.setWeekNo(targetWeek(challenge, item.getWeekday()));
+                }
+                alreadyProcessed = false;
             }
+            case PREPAID -> alreadyProcessed = true;
+            default -> throw new ApiException(ErrorCode.ITEM_ALREADY_RECORDED);
         }
+
         return new PrepayResponse(view(item, challenge), challengeService.budgetView(challenge),
-                item.getTargetWeek());
+                item.getWeekNo(), overflowOf(item), alreadyProcessed);
+    }
+
+    /** record·prepay 공통 — 차감 결과 잔액이 음수면 overflow (명세 §6.4·§6.5, 스키마 §8.2) */
+    private static Overflow overflowOf(Item item) {
+        if (item.getBalanceAfter() == null || item.getBalanceAfter() >= 0) {
+            return null;
+        }
+        int reducedBy = item.getBalanceAfter() - item.getBalanceIfOriginal();
+        String note = reducedBy > 0
+                ? "흥정으로 " + reducedBy + "만큼 덜 깊어졌어요."
+                : "초과분은 리포트에 정직하게만 적어둘게요.";
+        return new Overflow(item.getBalanceAfter(), item.getBalanceIfOriginal(), reducedBy, note);
     }
 
     /** 약속 요일이 속한 주차 (W4 전용, 명세 §6.5) */
@@ -189,21 +225,19 @@ public class ItemService {
         return Math.max(1, Math.min(4, week));
     }
 
+    /** 삭제 — 명세 §6.9: RECORDED/PREPAID → 409 · CANCELED → 204 멱등 · 그 외 → CANCELED */
     @Transactional
     public void delete(String userId, String itemId) {
         Challenge challenge = challengeService.requireActive(userId);
         Item item = owned(challenge, itemId);
-        if (item.getStatus() == ItemStatus.RECORDED || item.getStatus() == ItemStatus.PREPAID) {
-            throw new ApiException(ErrorCode.ITEM_ALREADY_RECORDED, "이미 확정된 항목은 지울 수 없어요.");
-        }
-        item.setStatus(ItemStatus.CANCELED);
-    }
-
-    private static void requireRecordable(Item item) {
         switch (item.getStatus()) {
-            case RECORDED, PREPAID -> throw new ApiException(ErrorCode.ITEM_ALREADY_RECORDED);
-            case CANCELED -> throw new ApiException(ErrorCode.NOT_FOUND);
-            case PENDING, HAGGLED, EXPIRED -> {
+            case RECORDED, PREPAID ->
+                    throw new ApiException(ErrorCode.ITEM_ALREADY_RECORDED, "이미 확정된 항목은 지울 수 없어요.");
+            case CANCELED -> {
+            }
+            default -> {
+                item.setStatus(ItemStatus.CANCELED);
+                item.setCanceledAt(Instant.now());
             }
         }
     }
@@ -216,10 +250,9 @@ public class ItemService {
 
     private ItemView view(Item item, Challenge challenge) {
         int effective = item.effectivePoints();
-        boolean settled = item.getStatus() == ItemStatus.RECORDED || item.getStatus() == ItemStatus.PREPAID;
-        int balanceAfter = settled ? challenge.getBalance() : challenge.getBalance() - effective;
-        int balanceIfOriginal = settled
-                ? challenge.getBalance() - (item.getOriginalPoints() - effective)
+        // 차감 완료 항목은 스냅샷을, 미차감 항목은 현재 잔액 기준 예상값을 보여준다
+        int balanceAfter = item.isDeducted() ? item.getBalanceAfter() : challenge.getBalance() - effective;
+        int balanceIfOriginal = item.isDeducted() ? item.getBalanceIfOriginal()
                 : challenge.getBalance() - item.getOriginalPoints();
 
         AdjustedView adjusted = item.isHaggled()

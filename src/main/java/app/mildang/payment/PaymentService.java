@@ -4,6 +4,7 @@ import app.mildang.common.config.MildangProps;
 import app.mildang.common.error.ApiException;
 import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
+import app.mildang.common.util.Hashes;
 import app.mildang.payment.PaymentDtos.CheckoutRequest;
 import app.mildang.payment.PaymentDtos.CheckoutResponse;
 import java.time.Instant;
@@ -55,6 +56,7 @@ public class PaymentService {
         payment.setUserId(userId);
         payment.setPeriod(request.period());
         payment.setProvider(request.provider());
+        payment.setReceiptHash(Hashes.sha256(request.receipt() == null ? "" : request.receipt()));
         payment.setAmountKrw(request.period().priceKrw());
         payment.setStatus(PaymentStatus.PAID);
         payment.setPaidAt(Instant.now());

@@ -72,17 +72,16 @@ public class ChallengeService {
                     throw new ApiException(ErrorCode.CHALLENGE_IN_PROGRESS);
                 });
 
+        Payment payment = null;
         if (request.period().isFree()) {
             // demo에서는 FREE_TRIAL_USED를 발생시키지 않는다 — 심사위원 무제한 재시작 (명세 §14.4)
+            // free_trial_used=true 마킹은 생성이 아니라 예산 확정(ACTIVE) 시점 (스키마 v2.1 §4.1)
             User user = userRepository.findById(userId).orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
-            if (!demoEnabled) {
-                if (user.isFreeTrialUsed()) {
-                    throw new ApiException(ErrorCode.FREE_TRIAL_USED);
-                }
-                user.setFreeTrialUsed(true);
+            if (!demoEnabled && user.isFreeTrialUsed()) {
+                throw new ApiException(ErrorCode.FREE_TRIAL_USED);
             }
         } else {
-            requirePaid(userId, request);
+            payment = requirePaid(userId, request);
         }
 
         boolean needsSurvey = challengeRepository
@@ -99,23 +98,28 @@ public class ChallengeService {
         challenge.setCreatedAt(Instant.now());
         challengeRepository.save(challenge);
 
+        if (payment != null) {
+            payment.setConsumedByChallengeId(challenge.getId()); // 결제 1건 = 챌린지 1건 (스키마 v2.1 §5.1)
+        }
+
         return new CreateResponse(challenge.getId(), challenge.getPeriod(), challenge.getStatus(),
                 challenge.getTotalDays(), needsSurvey, null);
     }
 
-    private void requirePaid(String userId, CreateRequest request) {
+    private Payment requirePaid(String userId, CreateRequest request) {
         if (request.paymentId() == null) {
             throw new ApiException(ErrorCode.PAYMENT_REQUIRED);
         }
         Payment payment = paymentRepository.findById(request.paymentId())
                 .filter(p -> p.getUserId().equals(userId))
                 .orElseThrow(() -> new ApiException(ErrorCode.PAYMENT_REQUIRED));
-        if (payment.getStatus() != PaymentStatus.PAID) {
+        if (payment.getStatus() != PaymentStatus.PAID || payment.getConsumedByChallengeId() != null) {
             throw new ApiException(ErrorCode.PAYMENT_REQUIRED);
         }
         if (payment.getPeriod() != request.period()) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "결제한 기간과 선택한 기간이 달라요.", "paymentId", null);
         }
+        return payment;
     }
 
     @Transactional(readOnly = true)
@@ -137,7 +141,9 @@ public class ChallengeService {
             throw new ApiException(ErrorCode.BUDGET_ALREADY_SET);
         }
         Survey survey = resolveSurvey(userId, challenge, request.survey());
-        validateBudget(challenge, survey, request);
+        BudgetPolicy.Result estimate =
+                BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
+        validateBudget(estimate, request);
 
         Instant now = Instant.now();
         challenge.setSurveyNoodle(survey.noodle());
@@ -146,11 +152,20 @@ public class ChallengeService {
         challenge.setOptionKey(request.optionKey());
         challenge.setBudget(request.budget());
         challenge.setBalance(request.budget());
+        challenge.setEstimatedWeekly(estimate.estimatedWeekly());
+        challenge.setCutRatePercent(estimate.cutRatePercent());
         challenge.setStatus(ChallengeStatus.ACTIVE);
         challenge.setStartedAt(now);
         challenge.setEndsAt(now.plus(Duration.ofDays(challenge.getTotalDays())).minusSeconds(1));
 
         String tip = StartTips.of(survey.noodle(), survey.bread(), survey.snack());
+        challenge.setStartTipText(tip);
+
+        // W1 무료 체험 소진은 ACTIVE 시점에 마킹 — 온보딩 이탈자가 무료를 잃지 않도록 (스키마 v2.1 §4.1)
+        if (challenge.getPeriod().isFree() && !demoEnabled) {
+            userRepository.findById(userId).ifPresent(u -> u.setFreeTrialUsed(true));
+        }
+
         return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getBudget(),
                 challenge.getBalance(), challenge.getStartedAt(), challenge.getEndsAt(), new StartTip(tip));
     }
@@ -168,15 +183,13 @@ public class ChallengeService {
         return new Survey(previous.getSurveyNoodle(), previous.getSurveyBread(), previous.getSurveySnack());
     }
 
-    private void validateBudget(Challenge challenge, Survey survey, ConfirmRequest request) {
+    private void validateBudget(BudgetPolicy.Result result, ConfirmRequest request) {
         if (request.budget() < 1) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "예산은 1 이상이어야 해요.", "budget", null);
         }
         if (request.optionKey() == OptionKey.CUSTOM) {
             return;
         }
-        BudgetPolicy.Result result =
-                BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
         int expected = result.options().stream()
                 .filter(o -> o.key() == request.optionKey())
                 .findFirst()
@@ -261,8 +274,8 @@ public class ChallengeService {
         int total = challenge.getBudget() == null ? 0 : challenge.getBudget();
         int gauge = total == 0 ? 0
                 : Math.max(0, Math.min(100, (int) Math.round(challenge.getBalance() * 100.0 / total)));
-        return new BudgetView(total, challenge.getBalance(), challenge.getSpentTotal(),
-                challenge.getPrepaidTotal(), gauge);
+        return new BudgetView(total, challenge.getBalance(), challenge.getSpent(),
+                challenge.getPrepaid(), gauge);
     }
 
     /** 진행 중(ACTIVE) 챌린지 — 없으면 404. 기간이 지났으면 COMPLETED 전이 후 404. */
@@ -273,6 +286,7 @@ public class ChallengeService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "진행 중인 챌린지가 없어요."));
         if (challenge.getEndsAt() != null && Instant.now().isAfter(challenge.getEndsAt())) {
             challenge.setStatus(ChallengeStatus.COMPLETED);
+            challenge.setCompletedAt(Instant.now());
             throw new ApiException(ErrorCode.NOT_FOUND, "진행 중인 챌린지가 없어요.");
         }
         return challenge;

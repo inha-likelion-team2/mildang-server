@@ -37,6 +37,13 @@ public class Payment {
     @Column(nullable = false)
     private PaymentStatus status;
 
+    /** 영수증 SHA-256 — 리플레이 차단 (스키마 v2.1 §5.1) */
+    @Column(nullable = false)
+    private byte[] receiptHash;
+
+    /** 결제 1건 = 챌린지 1건. null이면 아직 미사용 */
+    private String consumedByChallengeId;
+
     private Instant paidAt;
 
     @Column(nullable = false)

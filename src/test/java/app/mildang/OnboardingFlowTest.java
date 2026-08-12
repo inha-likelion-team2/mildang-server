@@ -144,7 +144,7 @@ class OnboardingFlowTest {
 
     @Test
     @Order(7)
-    @DisplayName("프리셋 항목 생성(라면 80) → 기록 → 잔액 5, 재기록 409")
+    @DisplayName("프리셋 항목 생성(라면 80) → 기록 → 잔액 5, 재기록은 멱등 200 (§6.9)")
     void createAndRecordItem() throws Exception {
         MvcResult created = mvc.perform(post("/items")
                         .header("Authorization", "Bearer " + token)
@@ -161,11 +161,18 @@ class OnboardingFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.status").value("RECORDED"))
                 .andExpect(jsonPath("$.budget.balance").value(5))
+                .andExpect(jsonPath("$.alreadyProcessed").value(false))
                 .andExpect(jsonPath("$.overflow").doesNotExist());
 
+        // 재기록 더블탭 — 409가 아니라 멱등 200, 차감 없음 (§6.9)
         mvc.perform(post("/items/" + mealItemId + "/record").header("Authorization", "Bearer " + token))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error.code").value("ITEM_ALREADY_RECORDED"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alreadyProcessed").value(true))
+                .andExpect(jsonPath("$.budget.balance").value(5));
+
+        // MEAL 항목에 prepay는 400 — 선차감은 약속 전용
+        mvc.perform(post("/items/" + mealItemId + "/prepay").header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -180,16 +187,19 @@ class OnboardingFlowTest {
                 .andReturn();
         promiseItemId = json(created).get("id").asText();
 
-        // 잔액 5에서 치킨 70 선차감 → −65. 초과는 막지 않는다 (§7.6)
+        // 잔액 5에서 치킨 70 선차감 → −65. 초과는 막지 않고 overflow를 싣는다 (§6.5·§7.6)
         mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.status").value("PREPAID"))
                 .andExpect(jsonPath("$.budget.balance").value(-65))
-                .andExpect(jsonPath("$.budget.prepaid").value(70));
+                .andExpect(jsonPath("$.budget.prepaid").value(70))
+                .andExpect(jsonPath("$.alreadyProcessed").value(false))
+                .andExpect(jsonPath("$.overflow.balance").value(-65));
 
-        // 더블탭 — 이중 차감 없음
+        // 더블탭 — 이중 차감 없음, 멱등 표식 (§6.9)
         mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.alreadyProcessed").value(true))
                 .andExpect(jsonPath("$.budget.balance").value(-65))
                 .andExpect(jsonPath("$.budget.prepaid").value(70));
 
@@ -198,6 +208,20 @@ class OnboardingFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.budget.gaugePercent").value(0))
                 .andExpect(jsonPath("$.prepaidItems[0].name").value("금요일 치킨 약속"));
+
+        // PREPAID에 record — 200 전이, 잔액 불변, prepaid → spent 이동 (§6.9·§0.10)
+        mvc.perform(post("/items/" + promiseItemId + "/record").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.item.status").value("RECORDED"))
+                .andExpect(jsonPath("$.alreadyProcessed").value(true))
+                .andExpect(jsonPath("$.budget.balance").value(-65))
+                .andExpect(jsonPath("$.budget.prepaid").value(0))
+                .andExpect(jsonPath("$.budget.spent").value(150));
+
+        // RECORDED가 된 약속에 prepay 재시도 — 다른 종착 상태로의 전이라 409 (§6.9)
+        mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error.code").value("ITEM_ALREADY_RECORDED"));
     }
 
     @Test
@@ -208,7 +232,9 @@ class OnboardingFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.done").value(false))
                 .andExpect(jsonPath("$.questions.length()").value(3))
-                .andExpect(jsonPath("$.responseRate.reportThreshold").value(60));
+                .andExpect(jsonPath("$.checkinDays.answered").value(0))
+                .andExpect(jsonPath("$.checkinDays.elapsed").value(1))
+                .andExpect(jsonPath("$.checkinDays.total").value(7));
 
         mvc.perform(put("/checkins/today")
                         .header("Authorization", "Bearer " + token)
@@ -218,7 +244,7 @@ class OnboardingFlowTest {
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.done").value(true))
-                .andExpect(jsonPath("$.responseRate.percent").value(100));
+                .andExpect(jsonPath("$.checkinDays.answered").value(1));
 
         // 부분 제출은 400
         mvc.perform(put("/checkins/today")

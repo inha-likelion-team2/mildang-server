@@ -14,8 +14,8 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 /**
- * 3a(약속)·3b(식사) 공용 항목 — 명세 §6.1.
- * original_* 은 생성 후 불변, 흥정 결과는 adjusted_* 에만 기록한다.
+ * 3a(약속)·3b(식사) 공용 항목 + 잔액 차감 기록 — DB 스키마 v2.1 §8.
+ * original_* 은 생성 후 불변. balance_* 스냅샷은 차감 시점에 1회만 기록(COALESCE 보존, §8.2).
  */
 @Entity
 @Getter
@@ -25,6 +25,9 @@ public class Item {
 
     @Id
     private String id;
+
+    @Column(nullable = false)
+    private String userId;
 
     @Column(nullable = false)
     private String challengeId;
@@ -74,6 +77,13 @@ public class Item {
 
     private Integer adjustedTurns;
 
+    // ---- 잔액 차감 스냅샷 (record·prepay에서 1회만 기록. null = 아직 미차감) ----
+    private Integer balanceBefore;
+
+    private Integer balanceAfter;
+
+    private Integer balanceIfOriginal;
+
     // ---- 기타 ----
     @Enumerated(EnumType.STRING)
     private Weekday weekday;
@@ -81,7 +91,8 @@ public class Item {
     @Column(nullable = false)
     private LocalDate logicalDate;
 
-    private Integer targetWeek;
+    /** W4 전용 — 약속 요일이 속한 주차 (응답의 targetWeek) */
+    private Integer weekNo;
 
     private Instant expiresAt;
 
@@ -90,11 +101,34 @@ public class Item {
 
     private Instant recordedAt;
 
+    private Instant prepaidAt;
+
+    private Instant expiredAt;
+
+    private Instant canceledAt;
+
     public int effectivePoints() {
         return adjustedPoints != null ? adjustedPoints : originalPoints;
     }
 
     public boolean isHaggled() {
         return adjustedPoints != null;
+    }
+
+    public boolean isDeducted() {
+        return balanceAfter != null;
+    }
+
+    /** 차감 스냅샷 — 이미 값이 있으면 보존한다 (스키마 §8.2 COALESCE) */
+    public void snapshotBalances(int before, int after, int ifOriginal) {
+        if (this.balanceBefore == null) {
+            this.balanceBefore = before;
+        }
+        if (this.balanceAfter == null) {
+            this.balanceAfter = after;
+        }
+        if (this.balanceIfOriginal == null) {
+            this.balanceIfOriginal = ifOriginal;
+        }
     }
 }

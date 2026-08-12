@@ -26,9 +26,15 @@ public class Checkin {
     @Column(nullable = false)
     private String challengeId;
 
+    @Column(nullable = false)
+    private String userId;
+
     /** 논리적 날짜 (05:00 KST 경계) */
     @Column(nullable = false)
     private LocalDate date;
+
+    @Column(nullable = false)
+    private int dayIndex;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

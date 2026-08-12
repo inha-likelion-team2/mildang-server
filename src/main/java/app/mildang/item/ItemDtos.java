@@ -41,14 +41,16 @@ public class ItemDtos {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record RecordResponse(ItemView item, BudgetView budget, Overflow overflow) {
+    public record RecordResponse(ItemView item, BudgetView budget, Overflow overflow,
+                                 boolean alreadyProcessed) {
     }
 
     public record Overflow(int balance, int originalWouldBe, int reducedBy, String note) {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record PrepayResponse(ItemView item, BudgetView budget, Integer targetWeek) {
+    public record PrepayResponse(ItemView item, BudgetView budget, Integer targetWeek,
+                                 Overflow overflow, boolean alreadyProcessed) {
     }
 
     public record PresetsResponse(List<PresetView> presets, String source) {
