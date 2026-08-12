@@ -16,7 +16,8 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.url=jdbc:h2:mem:prodtest;MODE=PostgreSQL",
         "spring.datasource.username=sa",
         "spring.datasource.password=",
-        "spring.jpa.hibernate.ddl-auto=create-drop"
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "mildang.jwt.secret=test-secret-key-needs-32-bytes-min!!"
 })
 @AutoConfigureMockMvc
 class DemoRouteProdAbsentTest {

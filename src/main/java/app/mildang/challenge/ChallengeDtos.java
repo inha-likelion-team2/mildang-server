@@ -1,0 +1,85 @@
+package app.mildang.challenge;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotNull;
+import java.time.Instant;
+import java.util.List;
+
+public class ChallengeDtos {
+
+    // ---- GET /plans ----
+    public record PlansResponse(List<PlanCard> plans, String notice) {
+    }
+
+    public record PlanCard(Period period, String title, String subtitle, int priceKrw,
+                           boolean recommended, boolean available, String unavailableReason) {
+    }
+
+    // ---- POST /challenges ----
+    public record CreateRequest(@NotNull Period period, String paymentId) {
+    }
+
+    public record CreateResponse(String id, Period period, ChallengeStatus status,
+                                 int totalDays, boolean needsSurvey, Instant startedAt) {
+    }
+
+    // ---- 설문 ----
+    public record Survey(@NotNull SurveyLevel noodle, @NotNull SurveyLevel bread, @NotNull SurveyLevel snack) {
+    }
+
+    public record EstimateRequest(@NotNull @Valid Survey survey) {
+    }
+
+    @JsonInclude(JsonInclude.Include.ALWAYS)
+    public record EstimateResponse(int estimatedWeekly, int recommended, int cutRatePercent,
+                                   String rationale, List<Anchor> anchors,
+                                   List<BudgetPolicy.Option> options,
+                                   List<BudgetPolicy.WeekBudget> weeklyBreakdown) {
+    }
+
+    public record Anchor(String label, int points) {
+    }
+
+    // ---- POST /challenges/{id}/budget ----
+    public record ConfirmRequest(@Valid Survey survey, @NotNull OptionKey optionKey, @NotNull Integer budget) {
+    }
+
+    public record ConfirmResponse(String id, ChallengeStatus status, int budget, int balance,
+                                  Instant startedAt, Instant endsAt, StartTip startTip) {
+    }
+
+    public record StartTip(String text) {
+    }
+
+    // ---- GET /challenges/current ----
+    public record CurrentResponse(ChallengeView challenge, BudgetView budget, PaceView pace,
+                                  WeeklyView weekly, TipView tip, List<PrepaidItemView> prepaidItems,
+                                  CheckinView checkin, List<ExpiredConfirmView> expiredConfirm) {
+    }
+
+    public record ChallengeView(String id, Period period, ChallengeStatus status,
+                                int dayIndex, int totalDays, String label) {
+    }
+
+    public record BudgetView(int total, int balance, int spent, int prepaid, int gaugePercent) {
+    }
+
+    public record PaceView(int expectedBalance, int diff, String note, String state) {
+    }
+
+    public record WeeklyView(int week, int budget, int balance) {
+    }
+
+    public record TipView(String id, String text, String basis) {
+    }
+
+    public record PrepaidItemView(String id, String name, int points, String weekday, String note) {
+    }
+
+    public record CheckinView(boolean doneToday, Instant dueAt) {
+    }
+
+    public record ExpiredConfirmView(String id, String logicalDate, String menuLabel, int points, String question) {
+    }
+}

@@ -9,6 +9,12 @@ server:
     context-path: /v1
 
 mildang:
+  demo:
+    enabled: true
+  jwt:
+    secret: ${JWT_SECRET:mildang-dev-secret-key-32bytes-min!!}
+    access-ttl-seconds: 1800
+    refresh-ttl-days: 60
   ai:
     base-url: ${AI_BASE_URL:http://localhost:8000}
 
@@ -49,3 +55,9 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+
+mildang:
+  demo:
+    enabled: false
+  jwt:
+    secret: ${JWT_SECRET}
