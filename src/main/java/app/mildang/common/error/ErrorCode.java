@@ -3,7 +3,7 @@ package app.mildang.common.error;
 import org.springframework.http.HttpStatus;
 
 /**
- * API 명세 v1.1 §0.4 에러 코드. message는 사용자 노출 가능 한국어 기본값이며
+ * API 명세 v1.3 §0.4 에러 코드. message는 사용자 노출 가능 한국어 기본값이며
  * 던지는 쪽에서 더 구체적인 문구로 덮어쓸 수 있다.
  */
 public enum ErrorCode {
