@@ -1,5 +1,7 @@
 package app.mildang.item;
 
+import app.mildang.analysis.Analysis;
+import app.mildang.analysis.AnalysisService;
 import app.mildang.challenge.Challenge;
 import app.mildang.challenge.ChallengeService;
 import app.mildang.common.error.ApiException;
@@ -36,10 +38,13 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
     private final ChallengeService challengeService;
+    private final AnalysisService analysisService;
 
-    public ItemService(ItemRepository itemRepository, ChallengeService challengeService) {
+    public ItemService(ItemRepository itemRepository, ChallengeService challengeService,
+                       AnalysisService analysisService) {
         this.itemRepository = itemRepository;
         this.challengeService = challengeService;
+        this.analysisService = analysisService;
     }
 
     public PresetsResponse presets() {
@@ -64,13 +69,6 @@ public class ItemService {
         if (request.kind() == ItemKind.PROMISE && request.weekday() == null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "약속에는 요일이 필요해요.", "weekday", null);
         }
-        if (request.presetId() == null) {
-            // AI 분석·스캔 연동 전 — analysisId/scanId 경로는 다음 단계에서 열린다
-            throw new ApiException(ErrorCode.NOT_FOUND, "분석 결과를 찾을 수 없어요. 다시 분석해 주세요.");
-        }
-
-        Presets.Preset preset = Presets.byId(request.presetId())
-                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "프리셋을 찾을 수 없어요."));
 
         Instant now = Instant.now();
         LocalDate logicalDate = LogicalDate.of(now);
@@ -81,20 +79,40 @@ public class ItemService {
         item.setChallengeId(challenge.getId());
         item.setKind(request.kind());
         item.setStatus(ItemStatus.PENDING);
-        item.setSourceType(SourceType.PRESET);
-        item.setSourceRefId(preset.id());
-        item.setOriginalName(preset.name());
-        item.setOriginalUnit(preset.unit());
-        item.setOriginalPoints(preset.points());
-        item.setOriginalPm(preset.pm());
-        item.setOriginalConfidence(preset.confidence());
-        item.setOriginalBasis(preset.basis());
         item.setWeekday(request.weekday());
         item.setLogicalDate(logicalDate);
         item.setExpiresAt(request.kind() == ItemKind.MEAL ? LogicalDate.expiryOf(logicalDate) : null);
         item.setCreatedAt(now);
-        itemRepository.save(item);
 
+        if (request.analysisId() != null) {
+            // (A) 3c 분석 결과로 — 만료·미해결이면 404 (§6.3)
+            Analysis analysis = analysisService.requireUsable(userId, request.analysisId());
+            item.setSourceType(SourceType.TEXT);
+            item.setSourceRefId(analysis.getId());
+            item.setOriginalName(analysis.getName());
+            item.setOriginalUnit(analysis.getUnit() != null ? analysis.getUnit() : "1인분");
+            item.setOriginalPoints(analysis.getPoints());
+            item.setOriginalPm(analysis.getPm());
+            item.setOriginalConfidence(analysis.getConfidence());
+            item.setOriginalBasis(analysis.getBasis());
+        } else if (request.presetId() != null) {
+            // (C) 자주 먹는 것 프리셋으로
+            Presets.Preset preset = Presets.byId(request.presetId())
+                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "프리셋을 찾을 수 없어요."));
+            item.setSourceType(SourceType.PRESET);
+            item.setSourceRefId(preset.id());
+            item.setOriginalName(preset.name());
+            item.setOriginalUnit(preset.unit());
+            item.setOriginalPoints(preset.points());
+            item.setOriginalPm(preset.pm());
+            item.setOriginalConfidence(preset.confidence());
+            item.setOriginalBasis(preset.basis());
+        } else {
+            // (B) 스캔 메뉴로 — 스캔(4b) 연동 시 열린다
+            throw new ApiException(ErrorCode.NOT_FOUND, "스캔 결과를 찾을 수 없어요.");
+        }
+
+        itemRepository.save(item);
         return view(item, challenge);
     }
 

@@ -17,6 +17,7 @@ mildang:
     refresh-ttl-days: 60
   ai:
     base-url: ${AI_BASE_URL:http://localhost:8000}
+    fake: ${AI_FAKE:false}
 
 ---
 spring:
@@ -29,6 +30,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: create-drop
+
+mildang:
+  ai:
+    fake: ${AI_FAKE:true}   # 로컬 기본은 fake — 실 AI-Server 붙이려면 AI_FAKE=false
 
 ---
 spring:

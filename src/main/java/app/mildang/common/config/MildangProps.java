@@ -12,6 +12,7 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai) {
     public record Jwt(String secret, long accessTtlSeconds, long refreshTtlDays) {
     }
 
-    public record Ai(String baseUrl) {
+    /** fake=true면 AI-Server 없이 결정적 응답(FakeAiGateway) — 로컬·테스트용 */
+    public record Ai(String baseUrl, boolean fake) {
     }
 }
