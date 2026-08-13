@@ -34,6 +34,15 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(ErrorCode.NOT_FOUND, ErrorCode.NOT_FOUND.defaultMessage(), null, null));
     }
 
+    /** 10MB 초과 업로드 → 413 IMAGE_TOO_LARGE (명세 §0.4 — 500으로 새지 않게) */
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadSize(
+            org.springframework.web.multipart.MaxUploadSizeExceededException e) {
+        return ResponseEntity.status(ErrorCode.IMAGE_TOO_LARGE.status())
+                .body(ErrorResponse.of(ErrorCode.IMAGE_TOO_LARGE,
+                        ErrorCode.IMAGE_TOO_LARGE.defaultMessage(), "image", null));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnknown(Exception e) {
         log.error("unhandled exception", e);

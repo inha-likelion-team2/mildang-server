@@ -3,6 +3,10 @@ spring:
     name: mildang-server
   profiles:
     default: local
+  servlet:
+    multipart:
+      max-file-size: 10MB      # 명세 §5.3 — 이미지 10MB 이하 (Spring 기본 1MB라 명시 필수)
+      max-request-size: 12MB
 
 server:
   servlet:
