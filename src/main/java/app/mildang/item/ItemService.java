@@ -39,12 +39,14 @@ public class ItemService {
     private final ItemRepository itemRepository;
     private final ChallengeService challengeService;
     private final AnalysisService analysisService;
+    private final app.mildang.scan.ScanService scanService;
 
     public ItemService(ItemRepository itemRepository, ChallengeService challengeService,
-                       AnalysisService analysisService) {
+                       AnalysisService analysisService, app.mildang.scan.ScanService scanService) {
         this.itemRepository = itemRepository;
         this.challengeService = challengeService;
         this.analysisService = analysisService;
+        this.scanService = scanService;
     }
 
     public PresetsResponse presets() {
@@ -108,8 +110,20 @@ public class ItemService {
             item.setOriginalConfidence(preset.confidence());
             item.setOriginalBasis(preset.basis());
         } else {
-            // (B) 스캔 메뉴로 — 스캔(4b) 연동 시 열린다
-            throw new ApiException(ErrorCode.NOT_FOUND, "스캔 결과를 찾을 수 없어요.");
+            // (B) 스캔 메뉴로 — 생성 시점 값을 original로 복사 (수정 소급 없음, §5.5)
+            if (request.menuId() == null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED, "scanId에는 menuId가 함께 필요해요.", "menuId", null);
+            }
+            app.mildang.scan.ScanMenu menu = scanService.requireMenu(userId, request.scanId(), request.menuId());
+            item.setSourceType(SourceType.IMAGE);
+            item.setSourceScanId(menu.getScanId());
+            item.setSourceMenuNo(menu.getMenuNo());
+            item.setOriginalName(menu.getName());
+            item.setOriginalUnit("1인분");
+            item.setOriginalPoints(menu.getPoints());
+            item.setOriginalPm(menu.getPm());
+            item.setOriginalConfidence(menu.getConfidence());
+            item.setOriginalBasis(menu.getBasis() != null ? menu.getBasis() : "메뉴판 스캔 추정");
         }
 
         itemRepository.save(item);
@@ -248,6 +262,11 @@ public class ItemService {
         return itemRepository.findById(itemId)
                 .filter(i -> i.getChallengeId().equals(challenge.getId()))
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
+    }
+
+    /** 다른 도메인(흥정 등)에서 항목 응답을 만들 때 사용 */
+    public ItemView viewOf(Item item, Challenge challenge) {
+        return view(item, challenge);
     }
 
     private ItemView view(Item item, Challenge challenge) {

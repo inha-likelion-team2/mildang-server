@@ -26,7 +26,8 @@ public class WebConfig implements WebMvcConfigurer {
         // 인증 불필요: /auth/*, GET /plans (명세 §0.2) + 헬스체크·데모 핑
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/**")
-                .excludePathPatterns("/auth/**", "/plans", "/health", "/demo/ping", "/error");
+                .excludePathPatterns("/auth/**", "/plans", "/health", "/demo/ping", "/error",
+                        "/invites/**"); // 딥링크 랜딩은 로그인 전 진입 (§1)
     }
 
     @Override

@@ -52,16 +52,19 @@ public class ChallengeService {
     private final PaymentRepository paymentRepository;
     private final ItemRepository itemRepository;
     private final CheckinRepository checkinRepository;
+    private final app.mildang.tip.TipService tipService;
     private final boolean demoEnabled;
 
     public ChallengeService(ChallengeRepository challengeRepository, UserRepository userRepository,
                             PaymentRepository paymentRepository, ItemRepository itemRepository,
-                            CheckinRepository checkinRepository, MildangProps props) {
+                            CheckinRepository checkinRepository, app.mildang.tip.TipService tipService,
+                            MildangProps props) {
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
         this.paymentRepository = paymentRepository;
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
+        this.tipService = tipService;
         this.demoEnabled = props.demo().enabled();
     }
 
@@ -237,9 +240,10 @@ public class ChallengeService {
                 .findByChallengeIdAndDate(challenge.getId(), LogicalDate.of(now)).isPresent();
         Instant dueAt = LogicalDate.of(now).atTime(22, 0).atZone(LogicalDate.KST).toInstant();
 
-        // TODO AI 연동 후 write_dashboard_tip() 일 1회 생성·저장으로 교체 (BACKEND_NOTES §8)
-        TipView tip = new TipView("tip_generic",
-                "기록이 쌓이면 요일별 패턴을 짚어드릴게요. 오늘은 잔액만 확인하고 가볍게 가요.", "GENERIC");
+        // 일 1회 생성·저장 — 없으면 즉석 1회 시도, 실패 시 null(FE 영역 숨김) (§15.5)
+        app.mildang.tip.DashboardTip storedTip = tipService.todayTip(challenge, dayIndex, diff);
+        TipView tip = storedTip == null ? null
+                : new TipView(storedTip.getId(), storedTip.getText(), storedTip.getBasis());
 
         return new CurrentResponse(
                 new ChallengeView(challenge.getId(), challenge.getPeriod(), challenge.getStatus(),
