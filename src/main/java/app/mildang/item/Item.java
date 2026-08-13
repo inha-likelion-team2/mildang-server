@@ -44,7 +44,13 @@ public class Item {
     @Column(nullable = false)
     private SourceType sourceType;
 
+    /** TEXT→anl_* · PRESET→pst_* · IMAGE→null (스캔은 아래 두 컬럼, 스키마 v3.0 §8.1) */
     private String sourceRefId;
+
+    /** IMAGE만 — mnu는 스캔 범위 키라 (scanId, menuNo) 쌍으로 참조 */
+    private String sourceScanId;
+
+    private Integer sourceMenuNo;
 
     // ---- original (불변) ----
     @Column(nullable = false)
@@ -90,9 +96,6 @@ public class Item {
 
     @Column(nullable = false)
     private LocalDate logicalDate;
-
-    /** W4 전용 — 약속 요일이 속한 주차 (응답의 targetWeek) */
-    private Integer weekNo;
 
     private Instant expiresAt;
 

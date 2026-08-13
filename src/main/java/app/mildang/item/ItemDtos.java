@@ -49,7 +49,7 @@ public class ItemDtos {
     }
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record PrepayResponse(ItemView item, BudgetView budget, Integer targetWeek,
+    public record PrepayResponse(ItemView item, BudgetView budget,
                                  Overflow overflow, boolean alreadyProcessed) {
     }
 

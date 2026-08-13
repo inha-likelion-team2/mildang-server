@@ -31,21 +31,20 @@ public class ChallengeDtos {
     public record EstimateRequest(@NotNull @Valid Survey survey) {
     }
 
-    @JsonInclude(JsonInclude.Include.ALWAYS)
     public record EstimateResponse(int estimatedWeekly, int recommended, int cutRatePercent,
                                    String rationale, List<Anchor> anchors,
-                                   List<BudgetPolicy.Option> options,
-                                   List<BudgetPolicy.WeekBudget> weeklyBreakdown) {
+                                   List<BudgetPolicy.Option> options, int totalBudget) {
     }
 
     public record Anchor(String label, int points) {
     }
 
     // ---- POST /challenges/{id}/budget ----
+    /** budget은 주간값(options[optionKey].budget) — 저장·응답은 기간 총액 (§3.4) */
     public record ConfirmRequest(@Valid Survey survey, @NotNull OptionKey optionKey, @NotNull Integer budget) {
     }
 
-    public record ConfirmResponse(String id, ChallengeStatus status, int budget, int balance,
+    public record ConfirmResponse(String id, ChallengeStatus status, Period period, int budget, int balance,
                                   Instant startedAt, Instant endsAt, StartTip startTip) {
     }
 

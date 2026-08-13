@@ -113,7 +113,10 @@ public class ChallengeService {
         Payment payment = paymentRepository.findById(request.paymentId())
                 .filter(p -> p.getUserId().equals(userId))
                 .orElseThrow(() -> new ApiException(ErrorCode.PAYMENT_REQUIRED));
-        if (payment.getStatus() != PaymentStatus.PAID || payment.getConsumedByChallengeId() != null) {
+        if (payment.getConsumedByChallengeId() != null) {
+            throw new ApiException(ErrorCode.PAYMENT_ALREADY_USED); // v1.3 §4.1
+        }
+        if (payment.getStatus() != PaymentStatus.PAID) {
             throw new ApiException(ErrorCode.PAYMENT_REQUIRED);
         }
         if (payment.getPeriod() != request.period()) {
@@ -131,7 +134,7 @@ public class ChallengeService {
         BudgetPolicy.Result result =
                 BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
         return new EstimateResponse(result.estimatedWeekly(), result.recommended(), result.cutRatePercent(),
-                result.rationale(), ANCHORS, result.options(), result.weeklyBreakdown());
+                result.rationale(), ANCHORS, result.options(), result.totalBudget());
     }
 
     @Transactional
@@ -143,17 +146,24 @@ public class ChallengeService {
         Survey survey = resolveSurvey(userId, challenge, request.survey());
         BudgetPolicy.Result estimate =
                 BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
-        validateBudget(estimate, request);
+
+        // v1.3: 요청 budget은 주간값 — options[optionKey].budget과 정확히 일치해야 함 (§3.4, CUSTOM 없음)
+        BudgetPolicy.Option selected = estimate.option(request.optionKey());
+        if (selected.budget() != request.budget()) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "예산이 제안값과 달라요.", "budget", null);
+        }
+        int totalBudget = selected.totalBudget(); // 저장·응답은 기간 총액 = 주간 × 곱수
 
         Instant now = Instant.now();
         challenge.setSurveyNoodle(survey.noodle());
         challenge.setSurveyBread(survey.bread());
         challenge.setSurveySnack(survey.snack());
         challenge.setOptionKey(request.optionKey());
-        challenge.setBudget(request.budget());
-        challenge.setBalance(request.budget());
+        challenge.setBudgetWeekly(request.budget());
+        challenge.setBudget(totalBudget);
+        challenge.setBalance(totalBudget);
         challenge.setEstimatedWeekly(estimate.estimatedWeekly());
-        challenge.setCutRatePercent(estimate.cutRatePercent());
+        challenge.setCutRatePercent(BudgetPolicy.cutRateOf(request.optionKey()));
         challenge.setStatus(ChallengeStatus.ACTIVE);
         challenge.setStartedAt(now);
         challenge.setEndsAt(now.plus(Duration.ofDays(challenge.getTotalDays())).minusSeconds(1));
@@ -166,8 +176,9 @@ public class ChallengeService {
             userRepository.findById(userId).ifPresent(u -> u.setFreeTrialUsed(true));
         }
 
-        return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getBudget(),
-                challenge.getBalance(), challenge.getStartedAt(), challenge.getEndsAt(), new StartTip(tip));
+        return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getPeriod(),
+                challenge.getBudget(), challenge.getBalance(),
+                challenge.getStartedAt(), challenge.getEndsAt(), new StartTip(tip));
     }
 
     private Survey resolveSurvey(String userId, Challenge challenge, Survey requested) {
@@ -183,23 +194,6 @@ public class ChallengeService {
         return new Survey(previous.getSurveyNoodle(), previous.getSurveyBread(), previous.getSurveySnack());
     }
 
-    private void validateBudget(BudgetPolicy.Result result, ConfirmRequest request) {
-        if (request.budget() < 1) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "예산은 1 이상이어야 해요.", "budget", null);
-        }
-        if (request.optionKey() == OptionKey.CUSTOM) {
-            return;
-        }
-        int expected = result.options().stream()
-                .filter(o -> o.key() == request.optionKey())
-                .findFirst()
-                .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_FAILED, "옵션이 올바르지 않아요.", "optionKey", null))
-                .budget();
-        if (expected != request.budget()) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "예산이 제안값과 달라요.", "budget", null);
-        }
-    }
-
     @Transactional
     public CurrentResponse current(String userId) {
         Challenge challenge = requireActive(userId);
@@ -211,7 +205,8 @@ public class ChallengeService {
         int daysLeft = challenge.getTotalDays() - dayIndex;
         int expected = (int) Math.round(challenge.getBudget() * daysLeft / (double) challenge.getTotalDays());
         int diff = challenge.getBalance() - expected;
-        String state = diff >= 5 ? "AHEAD" : diff <= -5 ? "BEHIND" : "ON_TRACK";
+        // v1.3 §3.5: 부호만으로 판정 (임계 없음)
+        String state = diff > 0 ? "AHEAD" : diff < 0 ? "BEHIND" : "ON_TRACK";
         String note = switch (state) {
             case "AHEAD" -> "페이스보다 +" + diff + " 앞서 있어요";
             case "BEHIND" -> Math.abs(diff) + " 뒤에 있어요 — 따라잡을 수 있어요";

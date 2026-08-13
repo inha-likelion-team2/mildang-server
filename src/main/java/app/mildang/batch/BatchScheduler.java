@@ -14,17 +14,12 @@ public class BatchScheduler {
         this.batchJobs = batchJobs;
     }
 
-    /** 매일 05:00 KST — 항목 만료 + 챌린지 정리 (명세 §6.8, §11.1) */
+    /** 매일 05:00 KST — 세 배치 전부 (v1.3: 선차감 전환도 §0.8 일자 경계로 통일) */
     @Scheduled(cron = "0 0 5 * * *", zone = "Asia/Seoul")
     public void fiveAm() {
         Instant now = Instant.now();
         batchJobs.expireItems(now);
+        batchJobs.convertPrepaid(now);
         batchJobs.closeChallenges(now);
-    }
-
-    /** 매일 00:05 KST — 요일 지난 선차감 전환 (명세 §6.5) */
-    @Scheduled(cron = "0 5 0 * * *", zone = "Asia/Seoul")
-    public void prepaidConvert() {
-        batchJobs.convertPrepaid(Instant.now());
     }
 }

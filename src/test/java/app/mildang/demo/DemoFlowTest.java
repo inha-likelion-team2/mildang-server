@@ -56,7 +56,7 @@ class DemoFlowTest {
 
     @Test
     @Order(2)
-    @DisplayName("DAY4_ACTIVE 시드 → 4일차 대시보드 + 3b 흥정 항목 + 3a 약속")
+    @DisplayName("DAY4_ACTIVE 시드 — §14.5 검산 그대로: spent 13 · prepaid 20 · balance 52 · gauge 61")
     void seedDay4() throws Exception {
         mvc.perform(post("/demo/seed")
                         .header("Authorization", "Bearer " + token)
@@ -64,37 +64,30 @@ class DemoFlowTest {
                         .content("{\"scenario\":\"DAY4_ACTIVE\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mocked").value(true))
-                .andExpect(jsonPath("$.balance").value(50));
+                .andExpect(jsonPath("$.balance").value(52));
 
         mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.challenge.dayIndex").value(4))
                 .andExpect(jsonPath("$.challenge.label").value("1주 챌린지 · 4일차"))
-                .andExpect(jsonPath("$.budget.balance").value(50))
-                .andExpect(jsonPath("$.budget.spent").value(35))
+                .andExpect(jsonPath("$.budget.balance").value(52))
+                .andExpect(jsonPath("$.budget.spent").value(13))
+                .andExpect(jsonPath("$.budget.prepaid").value(20))
+                .andExpect(jsonPath("$.budget.gaugePercent").value(61))
+                .andExpect(jsonPath("$.prepaidItems[0].name").value("수요일 점심 약속"))
                 .andExpect(jsonPath("$.checkin.doneToday").value(false));
 
-        // 3b: 흥정 완료 라면(80→40) + 3a: 약속 치킨 대기
+        // 미기록 항목 없음 — summary는 필터와 무관한 고정값 (§6.2)
         mvc.perform(get("/items").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.items.length()").value(2))
-                .andExpect(jsonPath("$.summary.totalPoints").value(110));
+                .andExpect(jsonPath("$.items.length()").value(0))
+                .andExpect(jsonPath("$.summary.totalPoints").value(0));
     }
 
     @Test
     @Order(3)
-    @DisplayName("치킨 선차감 → advance-day 7 → run-batch: PREPAID→RECORDED 전환 + 라면 EXPIRED")
+    @DisplayName("advance-day 7 → run-batch: 수요일 지난 선차감이 RECORDED로 이동 (잔액 불변)")
     void batchDemo() throws Exception {
-        MvcResult items = mvc.perform(get("/items?kind=PROMISE").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andReturn();
-        String promiseId = json(items).get("items").get(0).get("id").asText();
-
-        mvc.perform(post("/items/" + promiseId + "/prepay").header("Authorization", "Bearer " + token))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.budget.balance").value(-20))
-                .andExpect(jsonPath("$.overflow.balance").value(-20));
-
         mvc.perform(post("/demo/advance-day")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -102,14 +95,13 @@ class DemoFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.mocked").value(true));
 
-        // 요일 지난 선차감 전환 1건 + 흥정 항목 만료 1건
         mvc.perform(post("/demo/run-batch")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"jobs\":[\"PREPAID_CONVERT\",\"ITEM_EXPIRY\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.converted").value(1))
-                .andExpect(jsonPath("$.expired").value(1));
+                .andExpect(jsonPath("$.expired").value(0));
     }
 
     @Test
@@ -139,7 +131,7 @@ class DemoFlowTest {
 
     @Test
     @Order(5)
-    @DisplayName("LOW_BALANCE·W4_DAY12·FRESH 시드 + reset")
+    @DisplayName("LOW_BALANCE·W2_DAY8·W4_DAY12 시드 (§14.5 수치) + reset")
     void otherScenarios() throws Exception {
         mvc.perform(post("/demo/seed")
                         .header("Authorization", "Bearer " + token)
@@ -151,14 +143,30 @@ class DemoFlowTest {
         mvc.perform(post("/demo/seed")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scenario\":\"W2_DAY8\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.balance").value(90));
+
+        mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.challenge.dayIndex").value(8))
+                .andExpect(jsonPath("$.budget.total").value(170))
+                .andExpect(jsonPath("$.pace.diff").value(17))
+                .andExpect(jsonPath("$.pace.state").value("AHEAD"));
+
+        mvc.perform(post("/demo/seed")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"scenario\":\"W4_DAY12\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.balance").value(240));
+                .andExpect(jsonPath("$.balance").value(280));
 
         mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.challenge.dayIndex").value(12))
-                .andExpect(jsonPath("$.challenge.period").value("W4"));
+                .andExpect(jsonPath("$.challenge.period").value("W4"))
+                .andExpect(jsonPath("$.budget.total").value(340))
+                .andExpect(jsonPath("$.budget.gaugePercent").value(82));
 
         mvc.perform(post("/demo/reset").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNoContent());

@@ -44,7 +44,8 @@ public class DemoSeedService {
     private final CheckinRepository checkinRepository;
     private final PaymentRepository paymentRepository;
 
-    private int runningBalance; // RECORDED 시드 항목의 잔액 스냅샷 재현용
+    private int runningBalance; // 차감 시드 항목의 잔액 스냅샷 재현용
+    private int runningPrepaid;
 
     public DemoSeedService(ChallengeRepository challengeRepository, ItemRepository itemRepository,
                            CheckinRepository checkinRepository, PaymentRepository paymentRepository) {
@@ -73,6 +74,7 @@ public class DemoSeedService {
             case "FRESH" -> null;
             case "DAY4_ACTIVE" -> day4Active(userId);
             case "COMPLETED" -> completed(userId);
+            case "W2_DAY8" -> w2Day8(userId);
             case "W4_DAY12" -> w4Day12(userId);
             case "LOW_BALANCE" -> lowBalance(userId);
             case "EXPIRED_CONFIRM" -> expiredConfirm(userId);
@@ -80,16 +82,25 @@ public class DemoSeedService {
         };
     }
 
-    /** W1 4일차 — 기록 2건(잔액 50), 흥정 완료 항목 1건(3b), 약속 대기 1건(3a), 체크인 3일 */
+    /** judge-02: W1 4일차 — spent 13 · prepaid 20 · balance 52 (§14.5 검산과 일치) */
     private Challenge day4Active(String userId) {
         Challenge c = challenge(userId, Period.W1, 85, 3, ChallengeStatus.ACTIVE);
-        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 2, null);
-        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 1, null);
-        haggled(c, "라면", "1봉지", 80, "면 전체가 밀 — 봉지라면 1인분", "반봉지 + 계란", 40, 4, 0);
-        promisePending(c, "치킨", "1마리", 70, "튀김옷이 밀가루 — 프라이드 기준", Weekday.FRI);
+        record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 2, null);
+        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 1, "양 줄임|8|3");
+        promisePrepaid(c, "점심", "1끼", 20, "면 반 그릇 기준", Weekday.WED, 3);
         checkin(c, 3, ConditionValue.BAD, ConditionValue.MID, ConditionValue.BAD);
         checkin(c, 2, ConditionValue.MID, ConditionValue.GOOD, ConditionValue.MID);
         checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        return finalize(c);
+    }
+
+    /** judge-05: W2 8일차 — 총 170, spent 75 · prepaid 5 · balance 90 (§14.5) */
+    private Challenge w2Day8(String userId) {
+        Challenge c = challenge(userId, Period.W2, 85, 7, ChallengeStatus.ACTIVE);
+        record(c, "칼국수", "1그릇", 80, Confidence.CERTAIN, "면 전체가 밀 — 기준 앵커 메뉴", 5, "면 반 그릇 + 계란|40|4");
+        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 3, null);
+        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 1, null);
+        promisePrepaid(c, "저녁", "1끼", 5, "된장찌개 기준", Weekday.SAT, 2);
         return finalize(c);
     }
 
@@ -111,12 +122,12 @@ public class DemoSeedService {
         return finalize(c);
     }
 
-    /** W4 12일차 — 잔액 240 (명세 §14.5 일치) */
+    /** judge-04: W4 12일차 — 총 340, spent 60 · balance 280 (§14.5) */
     private Challenge w4Day12(String userId) {
-        Challenge c = challenge(userId, Period.W4, 300, 11, ChallengeStatus.ACTIVE);
-        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 8, null);
-        record(c, "떡볶이", "1인분", 55, Confidence.HIGH, "떡·어묵에 밀 혼합", 5, "반인분 + 어묵|25");
-        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 2, null);
+        Challenge c = challenge(userId, Period.W4, 85, 11, ChallengeStatus.ACTIVE);
+        record(c, "칼국수", "1그릇", 80, Confidence.CERTAIN, "면 전체가 밀 — 기준 앵커 메뉴", 9, "면 반 그릇 + 계란|40|5");
+        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 4, null);
+        record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 1, null);
         return finalize(c);
     }
 
@@ -146,9 +157,12 @@ public class DemoSeedService {
 
     // ---- 빌더 ----
 
-    private Challenge challenge(String userId, Period period, int budget, int startDaysAgo, ChallengeStatus status) {
+    /** weeklyBudget × 곱수 = 기간 총액 (v1.3 §0.10). AS_IS 기준 시드 */
+    private Challenge challenge(String userId, Period period, int weeklyBudget, int startDaysAgo,
+                                ChallengeStatus status) {
         LocalDate startDate = LogicalDate.of(Instant.now()).minusDays(startDaysAgo);
         Instant startedAt = startDate.atTime(LocalTime.NOON).atZone(LogicalDate.KST).toInstant();
+        int totalBudget = weeklyBudget * period.weeks();
 
         Challenge c = new Challenge();
         c.setId(Ids.next(Ids.Prefix.CHALLENGE));
@@ -160,16 +174,18 @@ public class DemoSeedService {
         c.setSurveyNoodle(SurveyLevel.MID);
         c.setSurveyBread(SurveyLevel.LOW);
         c.setSurveySnack(SurveyLevel.HIGH);
-        c.setOptionKey(OptionKey.CUSTOM);
-        c.setBudget(budget);
-        c.setBalance(budget);
+        c.setOptionKey(OptionKey.AS_IS);
+        c.setBudgetWeekly(weeklyBudget);
+        c.setBudget(totalBudget);
+        c.setBalance(totalBudget);
         c.setEstimatedWeekly(100);
         c.setCutRatePercent(15);
         c.setStartTipText("면이 주식이군요. 라면 한 번을 반봉지+계란으로 바꾸는 것부터 시작해보세요.");
         c.setStartedAt(startedAt);
         c.setEndsAt(startedAt.plus(period.totalDays(), ChronoUnit.DAYS).minusSeconds(1));
         c.setCreatedAt(startedAt);
-        runningBalance = budget;
+        runningBalance = totalBudget;
+        runningPrepaid = 0;
         return challengeRepository.save(c);
     }
 
@@ -192,7 +208,7 @@ public class DemoSeedService {
         return item;
     }
 
-    /** daysAgo일 전에 기록된 항목. adjusted 형식: "라벨|포인트" (null이면 원본 그대로) */
+    /** daysAgo일 전에 기록된 항목. adjusted 형식: "라벨|포인트|턴수" (null이면 원본 그대로) */
     private void record(Challenge c, String name, String unit, int points, Confidence confidence,
                         String basis, int daysAgo, String adjusted) {
         Item item = base(c, ItemKind.MEAL, name, unit, points, confidence, basis);
@@ -201,7 +217,7 @@ public class DemoSeedService {
             String[] parts = adjusted.split("\\|");
             item.setAdjustedLabel(parts[0]);
             item.setAdjustedPoints(Integer.parseInt(parts[1]));
-            item.setAdjustedTurns(4);
+            item.setAdjustedTurns(parts.length > 2 ? Integer.parseInt(parts[2]) : 4);
             effective = item.getAdjustedPoints();
         }
         LocalDate date = LogicalDate.of(Instant.now()).minusDays(daysAgo);
@@ -216,29 +232,21 @@ public class DemoSeedService {
 
     private void haggledRecorded(Challenge c, String name, String unit, int points, String basis,
                                  String adjLabel, int adjPoints, int turns, int daysAgo) {
-        record(c, name, unit, points, Confidence.CERTAIN, basis, daysAgo, adjLabel + "|" + adjPoints);
+        record(c, name, unit, points, Confidence.CERTAIN, basis, daysAgo, adjLabel + "|" + adjPoints + "|" + turns);
     }
 
-    /** 흥정 완료·미기록 항목 (3b 리스트 시연) */
-    private void haggled(Challenge c, String name, String unit, int points, String basis,
-                         String adjLabel, int adjPoints, int turns, int daysAgo) {
-        Item item = base(c, ItemKind.MEAL, name, unit, points, Confidence.CERTAIN, basis);
-        item.setAdjustedLabel(adjLabel);
-        item.setAdjustedPoints(adjPoints);
-        item.setAdjustedBasis("면 절반 + 계란 1");
-        item.setAdjustedTurns(turns);
-        item.setStatus(ItemStatus.HAGGLED);
+    /** 선차감 완료 약속 — 대시보드 선차감 카드 재료. daysAgo일 전에 선차감한 것으로 기록 */
+    private void promisePrepaid(Challenge c, String name, String unit, int points, String basis,
+                                Weekday weekday, int daysAgo) {
+        Item item = base(c, ItemKind.PROMISE, name, unit, points, Confidence.HIGH, basis);
+        item.setStatus(ItemStatus.PREPAID);
+        item.setWeekday(weekday);
         LocalDate date = LogicalDate.of(Instant.now()).minusDays(daysAgo);
         item.setLogicalDate(date);
-        item.setExpiresAt(LogicalDate.expiryOf(date));
-        itemRepository.save(item);
-    }
-
-    /** 약속 대기 항목 (3a 리스트 시연 — 선차감 전) */
-    private void promisePending(Challenge c, String name, String unit, int points, String basis, Weekday weekday) {
-        Item item = base(c, ItemKind.PROMISE, name, unit, points, Confidence.HIGH, basis);
-        item.setStatus(ItemStatus.PENDING);
-        item.setWeekday(weekday);
+        item.setPrepaidAt(date.atTime(12, 0).atZone(LogicalDate.KST).toInstant());
+        item.snapshotBalances(runningBalance, runningBalance - points, runningBalance - points);
+        runningBalance -= points;
+        runningPrepaid += points;
         itemRepository.save(item);
     }
 
@@ -259,8 +267,10 @@ public class DemoSeedService {
         checkinRepository.save(checkin);
     }
 
+    /** 잔액은 항등식으로 계산 — 하드코딩 금지 (v1.3 §14.5): balance = total − spent − prepaid */
     private Challenge finalize(Challenge c) {
-        c.setSpent(c.getBudget() - runningBalance);
+        c.setPrepaid(runningPrepaid);
+        c.setSpent(c.getBudget() - runningBalance - runningPrepaid);
         c.setBalance(runningBalance);
         return c;
     }

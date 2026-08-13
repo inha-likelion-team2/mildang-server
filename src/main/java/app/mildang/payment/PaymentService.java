@@ -45,6 +45,18 @@ public class PaymentService {
             throw new UnsupportedOperationException("IAP 영수증 검증은 실연동 시 구현 (명세 §14.7 #2)");
         }
 
+        // v1.3 §4.1: 같은 receipt 재요청(더블탭)은 200 멱등 — 기존 결제 반환.
+        // demo의 빈 receipt는 서로 다른 결제가 같은 해시를 갖므로 멱등 대상에서 제외 (BACKEND_NOTES §4.3)
+        if (request.receipt() != null && !request.receipt().isBlank()) {
+            var existing = paymentRepository.findFirstByUserIdAndProviderAndReceiptHash(
+                    userId, request.provider(), Hashes.sha256(request.receipt()));
+            if (existing.isPresent()) {
+                Payment p = existing.get();
+                return new CheckoutResponse(demoEnabled ? Boolean.TRUE : null, p.getId(), p.getPeriod(),
+                        p.getAmountKrw(), p.getStatus(), p.getPaidAt());
+            }
+        }
+
         try {
             Thread.sleep(800);
         } catch (InterruptedException e) {

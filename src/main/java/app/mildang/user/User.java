@@ -30,12 +30,9 @@ public class User {
     @Column(nullable = false)
     private String nickname;
 
-    /** W1이 ACTIVE가 되는 시점(예산 확정)에 true — 온보딩 이탈자 보호 (스키마 §4.1) */
+    /** W1이 ACTIVE가 되는 시점(예산 확정)에 true. 재도전 엔드포인트가 없어져 무료 1회의 유일한 관문 (v1.3) */
     @Column(nullable = false)
     private boolean freeTrialUsed;
-
-    @Column(nullable = false)
-    private boolean retryUsed;
 
     @Column(nullable = false)
     private Instant createdAt;

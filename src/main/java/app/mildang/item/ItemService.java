@@ -2,11 +2,9 @@ package app.mildang.item;
 
 import app.mildang.challenge.Challenge;
 import app.mildang.challenge.ChallengeService;
-import app.mildang.challenge.Period;
 import app.mildang.common.error.ApiException;
 import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
-import app.mildang.common.model.Weekday;
 import app.mildang.common.time.LogicalDate;
 import app.mildang.item.ItemDtos.AdjustedView;
 import app.mildang.item.ItemDtos.CreateItemRequest;
@@ -23,7 +21,6 @@ import app.mildang.item.ItemDtos.SourceView;
 import app.mildang.item.ItemDtos.Summary;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -111,12 +108,13 @@ public class ItemService {
                         challenge.getId(), kind, statuses))
                 .stream().limit(Math.min(limit, 50)).toList();
 
-        int total = items.stream()
-                .filter(i -> UNRECORDED.contains(i.getStatus()))
-                .mapToInt(Item::effectivePoints).sum();
+        // v1.3 §6.2: summary는 쿼리 필터와 무관하게 미기록(PENDING·HAGGLED·EXPIRED) 전체를 집계 — 고정값
+        List<Item> unrecorded = itemRepository
+                .findByChallengeIdAndStatusInOrderByCreatedAtDesc(challenge.getId(), UNRECORDED);
+        int total = unrecorded.stream().mapToInt(Item::effectivePoints).sum();
         return new ListResponse(
                 items.stream().map(i -> view(i, challenge)).toList(),
-                new Summary(items.size(), total, challenge.getBalance() - total));
+                new Summary(unrecorded.size(), total, challenge.getBalance() - total));
     }
 
     private static List<ItemStatus> parseStatuses(String csv) {
@@ -188,9 +186,7 @@ public class ItemService {
                 item.snapshotBalances(before, before - effective, before - item.getOriginalPoints());
                 item.setStatus(ItemStatus.PREPAID);
                 item.setPrepaidAt(Instant.now());
-                if (challenge.getPeriod() == Period.W4) {
-                    item.setWeekNo(targetWeek(challenge, item.getWeekday()));
-                }
+                // v1.3 §6.5: 선차감은 기간과 무관하게 총 예산에서 즉시 — 귀속 구간(targetWeek) 폐지
                 alreadyProcessed = false;
             }
             case PREPAID -> alreadyProcessed = true;
@@ -198,7 +194,7 @@ public class ItemService {
         }
 
         return new PrepayResponse(view(item, challenge), challengeService.budgetView(challenge),
-                item.getWeekNo(), overflowOf(item), alreadyProcessed);
+                overflowOf(item), alreadyProcessed);
     }
 
     /** record·prepay 공통 — 차감 결과 잔액이 음수면 overflow (명세 §6.4·§6.5, 스키마 §8.2) */
@@ -211,18 +207,6 @@ public class ItemService {
                 ? "흥정으로 " + reducedBy + "만큼 덜 깊어졌어요."
                 : "초과분은 리포트에 정직하게만 적어둘게요.";
         return new Overflow(item.getBalanceAfter(), item.getBalanceIfOriginal(), reducedBy, note);
-    }
-
-    /** 약속 요일이 속한 주차 (W4 전용, 명세 §6.5) */
-    private static int targetWeek(Challenge challenge, Weekday weekday) {
-        LocalDate today = LogicalDate.of(Instant.now());
-        LocalDate target = today;
-        while (target.getDayOfWeek() != weekday.dayOfWeek()) {
-            target = target.plusDays(1);
-        }
-        LocalDate start = LogicalDate.of(challenge.getStartedAt());
-        int week = (int) (ChronoUnit.DAYS.between(start, target) / 7) + 1;
-        return Math.max(1, Math.min(4, week));
     }
 
     /** 삭제 — 명세 §6.9: RECORDED/PREPAID → 409 · CANCELED → 204 멱등 · 그 외 → CANCELED */

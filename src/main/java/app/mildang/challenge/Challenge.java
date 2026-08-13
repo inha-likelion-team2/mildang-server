@@ -33,7 +33,10 @@ public class Challenge {
     @Column(nullable = false)
     private int totalDays;
 
-    /** 예산 확정 전 null */
+    /** 요청으로 받은 주간값 = options[optionKey].budget — 검증 재현용 (스키마 v3.0 §6.1) */
+    private Integer budgetWeekly;
+
+    /** 저장·응답되는 기간 총액 = budgetWeekly × 곱수(1·2·4). 확정 전 null */
     private Integer budget;
 
     /** 현재 잔액 — record·prepay에서만 변경 (음수 허용). 항등식: balance = budget − spent − prepaid (§0.10) */
@@ -71,9 +74,6 @@ public class Challenge {
     private boolean needsSurvey;
 
     private String paymentId;
-
-    /** 재도전 원본 챌린지 — 원본당 1회 (403 RETRY_ALREADY_USED) */
-    private String retriedFromId;
 
     private Instant startedAt;
 
