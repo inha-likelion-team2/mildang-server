@@ -233,7 +233,7 @@ public class ChallengeService {
                 .map(i -> new ExpiredConfirmView(i.getId(), i.getLogicalDate().toString(), menuLabel(i),
                         i.effectivePoints(),
                         i.getLogicalDate().format(DateTimeFormatter.ofPattern("M월 d일")) + "에 "
-                                + i.effectivePoints() + "로 합의한 " + i.getOriginalName() + ", 드셨어요?"))
+                                + i.effectivePoints() + "으로 합의한 " + i.getOriginalName() + ", 드셨어요?"))
                 .toList();
 
         boolean doneToday = checkinRepository

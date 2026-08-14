@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>밀당 테스터 (임시 — 실 프론트 완성 시 삭제)</title>
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  body { font-family: "Malgun Gothic", sans-serif; background: #f6f5f0; color: #222; font-size: 14px; }
+  main { max-width: 560px; margin: 0 auto; padding: 12px 12px 80px; }
+  .card { background: #fff; border: 1px solid #e2ddd0; border-radius: 10px; padding: 14px; margin-bottom: 10px; }
+  h2 { font-size: 15px; margin-bottom: 8px; }
+  h3 { font-size: 13px; margin: 10px 0 6px; color: #666; }
+  button { border: 1px solid #c9b98a; background: #fff8e5; border-radius: 8px; padding: 7px 11px; margin: 2px; cursor: pointer; font-size: 13px; }
+  button.primary { background: #8a5e14; color: #fff; border-color: #8a5e14; }
+  button.ghost { background: #fff; border-color: #ddd; }
+  input, select { border: 1px solid #ccc; border-radius: 6px; padding: 7px; font-size: 13px; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 4px 0; }
+  .muted { color: #888; font-size: 12px; }
+  .big { font-size: 26px; font-weight: 800; }
+  .pill { display: inline-block; background: #efe9d8; border-radius: 999px; padding: 2px 10px; font-size: 12px; margin: 2px; }
+  .item { border: 1px solid #eee; border-radius: 8px; padding: 8px; margin: 6px 0; }
+  .strike { text-decoration: line-through; color: #999; }
+  #log { background: #1f1d18; color: #cfe8cf; font-family: Consolas, monospace; font-size: 11px; padding: 10px; border-radius: 8px; white-space: pre-wrap; max-height: 220px; overflow: auto; }
+  .err { color: #ff9d9d; }
+  #chat { max-height: 300px; overflow: auto; background: #faf8f2; border-radius: 8px; padding: 8px; }
+  .msg { margin: 6px 0; padding: 8px 10px; border-radius: 10px; max-width: 85%; }
+  .msg.ai { background: #efe9d8; }
+  .msg.me { background: #d9ead9; margin-left: auto; text-align: right; }
+  .gauge { height: 10px; background: #eee; border-radius: 5px; overflow: hidden; margin: 6px 0; }
+  .gauge > div { height: 100%; background: #8a5e14; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  td, th { border-bottom: 1px solid #eee; padding: 6px 4px; text-align: left; }
+  .hidden { display: none; }
+  .tabs button.on { background: #8a5e14; color: #fff; }
+  #toast { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #333; color: #fff;
+    padding: 10px 16px; border-radius: 10px; max-width: 90%; z-index: 99; transition: opacity .3s; opacity: 0; pointer-events: none; }
+  #toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+<main>
+  <div class="card">
+    <h2>밀당 테스터 <span class="muted">(임시 QA용 — 실 프론트 완성 시 삭제)</span></h2>
+    <div class="row"><label>API</label><input id="base" value="/v1" size="24"><span id="who" class="pill">미로그인</span></div>
+    <div class="row">
+      <input id="idToken" placeholder="idToken (아무 문자열)" value="tester-user-1" size="18">
+      <button class="primary" onclick="login()">로그인</button>
+      <button class="ghost" onclick="quick('demo-judge-02')">judge-02</button>
+      <button class="ghost" onclick="quick('demo-judge-03')">judge-03</button>
+      <button class="ghost" onclick="quick('demo-judge-05')">judge-05</button>
+    </div>
+    <h3>데모 도구</h3>
+    <div class="row">
+      <button onclick="seed('FRESH')">FRESH</button><button onclick="seed('DAY4_ACTIVE')">DAY4</button>
+      <button onclick="seed('W2_DAY8')">W2</button><button onclick="seed('W4_DAY12')">W4</button>
+      <button onclick="seed('COMPLETED')">완주</button><button onclick="seed('LOW_BALANCE')">잔액5</button>
+      <button onclick="seed('EXPIRED_CONFIRM')">만료확인</button>
+    </div>
+    <div class="row">
+      <button onclick="advanceDay(1)">+1일</button><button onclick="advanceDay(7)">+7일</button>
+      <button onclick="runBatch()">배치 실행</button><button onclick="call('POST','/demo/reset').then(refresh)">리셋</button>
+    </div>
+  </div>
+
+  <div class="card tabs" id="tabs">
+    <button data-v="onboard" class="on">온보딩</button><button data-v="dash">대시보드</button>
+    <button data-v="meal">식사(3b)</button><button data-v="promise">약속(3a)</button>
+    <button data-v="scan">스캔(4)</button><button data-v="checkin">체크인</button><button data-v="report">리포트</button>
+  </div>
+
+  <!-- 온보딩: 플랜 → (결제) → 설문 → 옵션 -->
+  <div class="card view" id="v-onboard">
+    <h2>화면 1 · 기간 선택</h2>
+    <div id="plans"></div>
+    <div id="paybox" class="hidden">
+      <h3>화면 1p · 결제 (데모 — 실제 결제가 발생하지 않습니다)</h3>
+      <button class="primary" onclick="payAndCreate()">결제하기</button>
+    </div>
+    <div id="surveybox" class="hidden">
+      <h2>화면 2 · 3문항 + 예산</h2>
+      <div class="row">면류 <select id="q-noodle"><option>0-1</option><option selected>2-3</option><option>4+</option></select>
+        빵류 <select id="q-bread"><option selected>0-1</option><option>2-3</option><option>4+</option></select>
+        간식 <select id="q-snack"><option>0-1</option><option>2-3</option><option selected>4+</option></select>
+        <button class="primary" onclick="estimate()">예산 제안 받기</button></div>
+      <div id="estimate"></div>
+    </div>
+  </div>
+
+  <!-- 대시보드 -->
+  <div class="card view hidden" id="v-dash">
+    <h2 id="d-label">대시보드</h2>
+    <div class="row"><span class="big" id="d-balance">-</span><span class="muted" id="d-total"></span></div>
+    <div class="gauge"><div id="d-gauge" style="width:0%"></div></div>
+    <div id="d-pace" class="muted"></div>
+    <div id="d-tip" class="item hidden"></div>
+    <div id="d-prepaid"></div>
+    <div id="d-expired"></div>
+    <div class="row muted" id="d-checkin"></div>
+  </div>
+
+  <!-- 3b 식사 -->
+  <div class="card view hidden" id="v-meal">
+    <h2>3b · 식사하기 <span class="muted" id="m-summary"></span></h2>
+    <h3>자주 먹는 것</h3><div id="presets"></div>
+    <h3>3c · 메뉴 직접 입력</h3>
+    <div class="row"><input id="m-query" placeholder="예: 라면"><button class="primary" onclick="analyze('MEAL')">분석하기</button><span id="m-recent"></span></div>
+    <div id="m-candidates"></div>
+    <h3>항목</h3><div id="m-items"></div>
+  </div>
+
+  <!-- 3a 약속 -->
+  <div class="card view hidden" id="v-promise">
+    <h2>3a · 약속 사전 결재</h2>
+    <div class="row">요일 <select id="p-weekday"><option>MON</option><option>TUE</option><option>WED</option><option>THU</option><option selected>FRI</option><option>SAT</option><option>SUN</option></select>
+      <input id="p-query" placeholder="예: 치킨"><button class="primary" onclick="analyze('PROMISE')">분석하기</button></div>
+    <h3>약속 항목</h3><div id="p-items"></div>
+  </div>
+
+  <!-- 스캔 -->
+  <div class="card view hidden" id="v-scan">
+    <h2>4a·4b · 메뉴판 스캔</h2>
+    <div class="row"><input type="file" id="s-file" accept="image/*"><button class="primary" onclick="scan()">촬영/업로드</button><span id="s-status" class="muted"></span></div>
+    <div id="s-result"></div>
+  </div>
+
+  <!-- 체크인 -->
+  <div class="card view hidden" id="v-checkin">
+    <h2>6 · 컨디션 체크인 <span class="muted" id="c-days"></span></h2>
+    <div id="c-questions"></div>
+    <button class="primary" onclick="putCheckin()">완료</button><span id="c-msg" class="muted"></span>
+  </div>
+
+  <!-- 리포트 -->
+  <div class="card view hidden" id="v-report">
+    <h2>7 · 완주 리포트</h2>
+    <button class="primary" onclick="loadReport()">리포트 불러오기</button>
+    <button onclick="shareCard()">스토리 공유 카드</button>
+    <div id="r-body"></div>
+  </div>
+
+  <!-- 흥정 오버레이 -->
+  <div class="card hidden" id="v-haggle" style="border: 2px solid #8a5e14">
+    <h2>5 · 밀당 대화 <span class="pill" id="h-turn">0/10턴</span> <span class="pill" id="h-frame"></span></h2>
+    <div class="muted" id="h-target"></div>
+    <div id="chat"></div>
+    <div class="row" id="h-chips"></div>
+    <div class="row"><input id="h-text" placeholder="메시지" size="30" onkeydown="if(event.key==='Enter')sendHaggle()">
+      <button class="primary" onclick="sendHaggle()">보내기</button></div>
+    <div class="row"><button class="primary" id="h-close" onclick="closeHaggle()">대화 종료</button>
+      <button class="ghost" onclick="abandonHaggle()">✕ 변경 없이 나가기</button></div>
+  </div>
+
+  <div class="card"><h3>마지막 응답 로그</h3><div id="log"></div></div>
+  <div id="toast"></div>
+</main>
+<script>
+let token = null, challengeId = null, currentPeriod = null, paymentId = null, haggleId = null, haggleItemId = null, haggleFrom = null;
+const $ = id => document.getElementById(id);
+let toastTimer = null;
+function toast(msg) { // alert 대신 비차단 토스트 (자동화 테스트에서 alert는 브라우저를 멈춤)
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+async function call(method, path, body, isForm) {
+  const opts = { method, headers: {} };
+  if (token) opts.headers['Authorization'] = 'Bearer ' + token;
+  if (body && !isForm) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+  if (body && isForm) opts.body = body;
+  const res = await fetch($('base').value + path, opts);
+  let data = null;
+  try { data = await res.json(); } catch (e) {}
+  logIt(method + ' ' + path + ' → ' + res.status, data, !res.ok);
+  if (!res.ok) throw { status: res.status, data };
+  return data;
+}
+function logIt(head, data, isErr) {
+  $('log').innerHTML = '<span class="' + (isErr ? 'err' : '') + '">' + head + '</span>\n'
+    + (data ? JSON.stringify(data, null, 1).slice(0, 3000) : '');
+}
+function show(v) {
+  document.querySelectorAll('.view').forEach(e => e.classList.add('hidden'));
+  $('v-' + v).classList.remove('hidden');
+  document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === v));
+  if (v === 'dash') refresh(); if (v === 'meal') loadMeal(); if (v === 'promise') loadPromise();
+  if (v === 'checkin') loadCheckin(); if (v === 'onboard') loadPlans();
+}
+document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => show(b.dataset.v));
+
+// ---------- 인증 ----------
+function quick(id) { $('idToken').value = id; login(); }
+async function login() {
+  const r = await call('POST', '/auth/social', { provider: 'KAKAO', idToken: $('idToken').value, deviceId: 'tester-' + $('idToken').value });
+  token = r.accessToken;
+  $('who').textContent = r.user.nickname + (r.mocked ? ' · 데모' : '');
+  try { await refresh(); show('dash'); } catch (e) { show('onboard'); loadPlans(); }
+}
+async function seed(s) { await call('POST', '/demo/seed', { scenario: s }); s === 'FRESH' ? show('onboard') : (s === 'COMPLETED' ? show('report') : show('dash')); }
+async function advanceDay(d) { await call('POST', '/demo/advance-day', { days: d }); refresh(); }
+async function runBatch() { await call('POST', '/demo/run-batch', { jobs: ['PREPAID_CONVERT', 'ITEM_EXPIRY'] }); refresh(); }
+
+// ---------- 온보딩 ----------
+async function loadPlans() {
+  const r = await call('GET', '/plans');
+  $('plans').innerHTML = r.plans.map(p =>
+    `<div class="item"><b>${p.title}</b> <span class="muted">${p.subtitle}</span>
+     <div class="row"><span>${p.priceKrw === 0 ? '무료' : p.priceKrw.toLocaleString() + '원'}</span>
+     <button class="primary" onclick="pickPlan('${p.period}', ${p.priceKrw})" ${p.available ? '' : 'disabled'}>${p.available ? '선택' : p.unavailableReason}</button></div></div>`
+  ).join('') + `<div class="muted">${r.notice}</div>`;
+}
+async function pickPlan(period, price) {
+  currentPeriod = period;
+  if (price > 0) { $('paybox').classList.remove('hidden'); return; }
+  const r = await call('POST', '/challenges', { period, paymentId: null });
+  challengeId = r.id; $('paybox').classList.add('hidden'); $('surveybox').classList.remove('hidden');
+}
+async function payAndCreate() {
+  const pay = await call('POST', '/payments/checkout', { period: currentPeriod, provider: 'MOCK', receipt: '' });
+  paymentId = pay.id;
+  const r = await call('POST', '/challenges', { period: currentPeriod, paymentId });
+  challengeId = r.id; $('paybox').classList.add('hidden'); $('surveybox').classList.remove('hidden');
+}
+function survey() { return { noodle: $('q-noodle').value, bread: $('q-bread').value, snack: $('q-snack').value }; }
+async function estimate() {
+  const r = await call('POST', `/challenges/${challengeId}/budget/estimate`, { survey: survey() });
+  $('estimate').innerHTML = `<div class="big">총 ${r.totalBudget} 포인트</div><div class="muted">${r.rationale}</div>
+    <div class="muted">${r.anchors.map(a => a.label + ' ' + a.points).join(' · ')}</div>
+    <div class="row">` + r.options.map(o =>
+      `<button onclick="confirmBudget('${o.key}', ${o.budget})"><b>${o.label}</b><br>총 ${o.totalBudget}</button>`).join('') + '</div>';
+}
+async function confirmBudget(key, weekly) {
+  const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: survey(), optionKey: key, budget: weekly });
+  toast('시작! 총 ' + r.budget + ' — ' + r.startTip.text);
+  show('dash');
+}
+
+// ---------- 대시보드 ----------
+async function refresh() {
+  const r = await call('GET', '/challenges/current');
+  challengeId = r.challenge.id;
+  $('d-label').textContent = r.challenge.label;
+  $('d-balance').textContent = r.budget.balance;
+  $('d-total').textContent = ` / ${r.budget.total} (spent ${r.budget.spent} · prepaid ${r.budget.prepaid})`;
+  $('d-gauge').style.width = r.budget.gaugePercent + '%';
+  $('d-pace').textContent = r.pace.note;
+  if (r.tip) { $('d-tip').classList.remove('hidden'); $('d-tip').innerHTML = `💬 ${r.tip.text} <span class="muted">[${r.tip.basis}]</span>`; }
+  else $('d-tip').classList.add('hidden');
+  $('d-prepaid').innerHTML = r.prepaidItems.map(p => `<div class="item">📌 ${p.name} · ${p.points} <span class="muted">${p.note}</span></div>`).join('');
+  $('d-expired').innerHTML = r.expiredConfirm.map(e =>
+    `<div class="item">⏰ ${e.question}<div class="row"><button onclick="record('${e.id}').then(refresh)">드셨어요</button>
+     <button class="ghost" onclick="call('DELETE','/items/${e.id}').then(refresh)">안 먹었어요</button></div></div>`).join('');
+  $('d-checkin').textContent = '오늘 체크인: ' + (r.checkin.doneToday ? '완료' : '미완료 ●');
+  return r;
+}
+
+// ---------- 항목 공용 ----------
+function itemCard(i, actions) {
+  const orig = `${i.original.name} ${i.original.unit} ${i.original.points}±${i.original.pm}`;
+  const adj = i.adjusted ? ` <span class="strike">${i.original.points}</span> → <b>${i.adjusted.label} ${i.adjusted.points}</b> <span class="pill">흥정 완료</span>` : '';
+  return `<div class="item"><b>${i.original.name}</b> <span class="muted">${orig}</span>${adj}
+    <div class="muted">${i.original.basis} · ${i.original.confidence} · 기록하면 잔액 ${i.effective.balanceAfter}</div>
+    <div class="row">${actions}</div></div>`;
+}
+async function loadMeal() {
+  const p = await call('GET', '/presets');
+  $('presets').innerHTML = p.presets.map(x => `<button onclick="fromPreset('${x.id}')">${x.name} ${x.points}</button>`).join('');
+  const rec = await call('GET', '/analyses/recent');
+  $('m-recent').innerHTML = rec.recent.map(x => `<span class="pill" onclick="$('m-query').value='${x.name}'">${x.name}</span>`).join('');
+  const r = await call('GET', '/items?kind=MEAL');
+  $('m-summary').textContent = `총 ${r.summary.count}건 · ${r.summary.totalPoints} · 기록하면 잔액 ${r.summary.balanceAfterAll}`;
+  $('m-items').innerHTML = r.items.map(i => itemCard(i,
+    `<button class="primary" onclick="openHaggle('${i.id}','FREE','meal')">${i.adjusted ? '다시 밀당' : '밀당하기'}</button>
+     <button onclick="record('${i.id}').then(loadMeal)">기록하기</button>
+     <button class="ghost" onclick="call('DELETE','/items/${i.id}').then(loadMeal)">삭제</button>`)).join('') || '<div class="muted">항목 없음</div>';
+}
+async function fromPreset(pid) { await call('POST', '/items', { kind: 'MEAL', presetId: pid }); loadMeal(); }
+async function analyze(kind) {
+  const q = kind === 'MEAL' ? $('m-query').value : $('p-query').value;
+  try {
+    const a = await call('POST', '/analyses/text', { query: q, context: { challengeId, kind } });
+    const body = { kind, analysisId: a.id };
+    if (kind === 'PROMISE') body.weekday = $('p-weekday').value;
+    await call('POST', '/items', body);
+    kind === 'MEAL' ? loadMeal() : loadPromise();
+  } catch (e) {
+    if (e.status === 422 && e.data?.error?.detail?.candidates) {
+      $('m-candidates').innerHTML = '잘 모르겠어요 — 비슷한 걸 골라주세요: ' + e.data.error.detail.candidates.map(c =>
+        `<button onclick="$('m-query').value='${c.name}';analyze('MEAL')">${c.name} ${c.points}</button>`).join('');
+    }
+  }
+}
+async function record(id) {
+  const r = await call('POST', `/items/${id}/record`, {});
+  if (r.overflow) toast(`잔액 ${r.overflow.balance} — ${r.overflow.note}`);
+  return r;
+}
+async function loadPromise() {
+  const r = await call('GET', '/items?kind=PROMISE&status=PENDING,HAGGLED,PREPAID');
+  $('p-items').innerHTML = r.items.map(i => itemCard(i,
+    i.status === 'PREPAID' ? '<span class="pill">선차감됨</span>' :
+    `<button class="primary" onclick="openHaggle('${i.id}','PROMISE','promise')">밀당하기</button>
+     <button onclick="prepay('${i.id}')">선차감하기</button>
+     <button class="ghost" onclick="call('DELETE','/items/${i.id}').then(loadPromise)">삭제</button>`)).join('') || '<div class="muted">약속 없음</div>';
+}
+async function prepay(id) {
+  const r = await call('POST', `/items/${id}/prepay`, {});
+  if (r.overflow) toast(`선차감하면 ${r.overflow.balance} — ${r.overflow.note}`);
+  loadPromise();
+}
+
+// ---------- 스캔 ----------
+let scanId = null;
+async function scan() {
+  const f = $('s-file').files[0];
+  if (!f) return toast('이미지를 선택하세요');
+  $('s-status').textContent = '밀당이가 메뉴판을 뜯어보는 중… (실 AI는 수십 초 걸릴 수 있음)';
+  const form = new FormData(); form.append('image', f); form.append('challengeId', challengeId);
+  try {
+    const r = await call('POST', '/scans', form, true);
+    scanId = r.id; renderScan(r);
+  } finally { $('s-status').textContent = ''; }
+}
+function renderScan(r) {
+  const rec = r.recommendation;
+  $('s-result').innerHTML = `<h3>${r.place ?? '(상호 미인식)'} · 방금</h3>` +
+    (rec ? `<div class="item">💬 추천 <b>${r.menus.find(m => m.id === rec.menuId)?.name} ${rec.points}</b><br>${rec.comment ?? ''}
+      <div class="row"><button class="primary" onclick="haggleScanMenu('${rec.menuId}')">밀당이랑 더 얘기하기</button>
+      <button onclick="itemFromScan('${rec.menuId}', true)">이걸로 기록</button></div></div>` : '') +
+    `<table><tr><th>가격</th><th>메뉴</th><th>근거</th><th></th></tr>` +
+    r.menus.map(m => `<tr><td><input size="3" value="${m.points}" onchange="patchMenu('${m.id}', this.value)">±${m.pm}</td>
+      <td>${m.name}${m.edited ? ' ✎' : ''}</td><td class="muted">${m.basis ?? ''} · ${m.confidence}</td>
+      <td><button onclick="haggleScanMenu('${m.id}')">밀당</button><button class="ghost" onclick="itemFromScan('${m.id}', true)">기록</button></td></tr>`).join('') + '</table>';
+}
+async function patchMenu(menuId, points) {
+  await call('PATCH', `/scans/${scanId}/menus/${menuId}`, { points: parseInt(points) });
+  const r = await call('GET', `/scans/${scanId}`); renderScan(r);
+}
+async function itemFromScan(menuId, doRecord) {
+  const i = await call('POST', '/items', { kind: 'MEAL', scanId, menuId });
+  if (doRecord) { await record(i.id); refresh(); }
+  return i;
+}
+async function haggleScanMenu(menuId) {
+  const i = await itemFromScan(menuId, false);
+  openHaggle(i.id, 'SCAN', 'scan');
+}
+
+// ---------- 흥정 ----------
+async function openHaggle(itemId, entryPoint, from) {
+  haggleFrom = from; haggleItemId = itemId;
+  const r = await call('POST', '/haggles', { itemId, entryPoint });
+  haggleId = r.id;
+  document.querySelectorAll('.view').forEach(e => e.classList.add('hidden'));
+  $('v-haggle').classList.remove('hidden');
+  $('h-turn').textContent = r.turn + '/' + r.maxTurns + '턴';
+  $('h-frame').textContent = r.frame;
+  $('h-target').textContent = `🏷 ${r.target.name} ${r.target.unit} ${r.target.points} (잔액 ${r.balance})`;
+  $('chat').innerHTML = `<div class="msg ai">${r.opening}</div>`;
+  $('h-chips').innerHTML = r.chips.map(c => `<button onclick="$('h-text').value='${c}';sendHaggle()">${c}</button>`).join('');
+  $('h-close').textContent = '대화 종료 · ' + r.target.points + ' 그대로';
+}
+async function sendHaggle() {
+  const text = $('h-text').value.trim(); if (!text) return;
+  $('chat').innerHTML += `<div class="msg me">${text}</div>`; $('h-text').value = '';
+  const r = await call('POST', `/haggles/${haggleId}/messages`, { text });
+  $('h-turn').textContent = r.turn + '/' + r.maxTurns + '턴';
+  let aiMsg = r.reply.text;
+  if (r.simulation) aiMsg += `<div class="muted">[합의값 ${r.agreed.points}] ${r.simulation.adjusted.row} → 잔액 ${r.simulation.adjusted.balanceAfter}${r.simulation.adjusted.overflow ? ' (초과)' : ''}</div>`;
+  $('chat').innerHTML += `<div class="msg ai">${aiMsg}</div>`;
+  $('chat').scrollTop = 99999;
+  $('h-close').textContent = r.closeButtonLabel;
+}
+async function closeHaggle() {
+  const r = await call('POST', `/haggles/${haggleId}/close`, {});
+  toast(r.farewell);
+  backFromHaggle();
+}
+async function abandonHaggle() { await call('DELETE', `/haggles/${haggleId}`); backFromHaggle(); }
+function backFromHaggle() {
+  $('v-haggle').classList.add('hidden');
+  if (haggleFrom === 'meal') show('meal');
+  else if (haggleFrom === 'promise') show('promise');
+  else { show('scan'); call('GET', `/scans/${scanId}`).then(renderScan); }
+}
+
+// ---------- 체크인 ----------
+const CVALS = ['GOOD', 'MID', 'BAD'], CLABEL = { GOOD: '좋음', MID: '보통', BAD: '나쁨' };
+let answers = {};
+async function loadCheckin() {
+  const r = await call('GET', '/checkins/today');
+  answers = r.answers && r.answers.BLOAT ? r.answers : {};
+  $('c-days').textContent = `${r.checkinDays.answered}/${r.checkinDays.elapsed}일 기록 (총 ${r.checkinDays.total}일)`;
+  $('c-questions').innerHTML = r.questions.map(q =>
+    `<div class="row"><b style="width:70px">${q.label}</b><span class="muted" style="width:90px">${q.desc}</span>` +
+    CVALS.map(v => `<button id="c-${q.key}-${v}" class="${answers[q.key] === v ? 'primary' : ''}" onclick="pick('${q.key}','${v}')">${CLABEL[v]}</button>`).join('') + '</div>').join('');
+}
+function pick(k, v) { answers[k] = v; CVALS.forEach(x => $('c-' + k + '-' + x).className = x === v ? 'primary' : ''); }
+async function putCheckin() {
+  if (!answers.BLOAT || !answers.SKIN || !answers.DROWSY) return toast('3문항 모두 선택해야 완료됩니다');
+  const r = await call('PUT', '/checkins/today', { answers });
+  $('c-msg').textContent = r.message; loadCheckin();
+}
+
+// ---------- 리포트 ----------
+async function loadReport() {
+  const r = await call('GET', `/challenges/${challengeId}/report`);
+  $('r-body').innerHTML = `<h3>${r.challenge.label} — ${r.title}</h3>
+    <div class="row">${r.stats.map(s => `<div class="item"><div class="muted">${s.label}</div><b>${s.value}</b><span class="muted">${s.sub ?? ''}</span></div>`).join('')}</div>
+    ${r.finding.available ? `<div class="item">🔍 <b>${r.finding.headline}</b><div class="muted">${r.finding.sampleNote}</div></div>` : '<div class="muted">발견 없음 (표본 부족)</div>'}
+    <div class="item">🤝 절감 <b>${r.haggleHighlight.totalSaved}</b>${r.haggleHighlight.best ? ` · 최고: ${r.haggleHighlight.best.menu} ${r.haggleHighlight.best.originalLabel} → ${r.haggleHighlight.best.adjustedLabel} (${r.haggleHighlight.best.when})` : ''}
+      · 평균 ${r.haggleHighlight.avgTurns}턴 · 최장 ${r.haggleHighlight.longestTurns}턴</div>
+    <div class="muted">${r.disclaimer}</div>
+    <button class="primary">${r.nextChallenge.ctaLabel}</button>`;
+}
+async function shareCard() {
+  const r = await call('POST', `/challenges/${challengeId}/report/share-card`, { mentions: [] });
+  const code = r.deepLink.split('/').pop();
+  const inv = await call('GET', `/invites/${code}`);
+  toast(`딥링크: ${r.deepLink} ${r.hashtag}\n초대 랜딩: ${inv.inviterNickname} → ${inv.ctaLabel}`);
+}
+</script>
+</body>
+</html>

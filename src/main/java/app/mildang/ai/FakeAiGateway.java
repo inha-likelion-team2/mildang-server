@@ -70,8 +70,8 @@ public class FakeAiGateway implements AiGateway {
         if (user.contains("그대로")) {
             proposal = proposal("asis", input.target().unit() + " 그대로", target, "원래 구성 그대로");
         } else if (user.matches(".*\\d+.*")) {
-            int asked = Integer.parseInt(user.replaceAll("\\D+", ""));
-            proposal = proposal("exact", "합의 " + Math.min(asked, target), Math.min(asked, target), "말씀하신 값으로");
+            int asked = Math.min(Integer.parseInt(user.replaceAll("\\D+", "")), target);
+            proposal = proposal("exact", "요청하신 양", asked, "말씀하신 값으로 확정");
         } else if (user.contains("반")) {
             proposal = proposal("half", "절반", Math.round(target / 2f), "양 절반");
         } else if (user.contains("깎")) {
@@ -81,7 +81,7 @@ public class FakeAiGateway implements AiGateway {
         } else {
             proposal = proposal("two", "2/3", Math.round(target * 2 / 3f), "양 2/3");
         }
-        String text = proposal.label() + "이면 " + proposal.points() + "입니다. 여기서 맞춰볼까요?";
+        String text = proposal.label() + "으로 " + proposal.points() + "이면 어때요? 여기서 맞춰볼까요?";
         if (input.turn() >= input.maxTurns()) {
             text = trim90(text + " 이제 정리할 시간이에요.");
         }
