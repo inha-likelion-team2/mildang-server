@@ -403,15 +403,24 @@ async function putCheckin() {
 }
 
 // ---------- 리포트 ----------
+let nextChallengeRec = null; // 재대결 추천 (리포트 nextChallenge)
 async function loadReport() {
   const r = await call('GET', `/challenges/${challengeId}/report`);
+  nextChallengeRec = r.nextChallenge;
   $('r-body').innerHTML = `<h3>${r.challenge.label} — ${r.title}</h3>
     <div class="row">${r.stats.map(s => `<div class="item"><div class="muted">${s.label}</div><b>${s.value}</b><span class="muted">${s.sub ?? ''}</span></div>`).join('')}</div>
     ${r.finding.available ? `<div class="item">🔍 <b>${r.finding.headline}</b><div class="muted">${r.finding.sampleNote}</div></div>` : '<div class="muted">발견 없음 (표본 부족)</div>'}
     <div class="item">🤝 절감 <b>${r.haggleHighlight.totalSaved}</b>${r.haggleHighlight.best ? ` · 최고: ${r.haggleHighlight.best.menu} ${r.haggleHighlight.best.originalLabel} → ${r.haggleHighlight.best.adjustedLabel} (${r.haggleHighlight.best.when})` : ''}
       · 평균 ${r.haggleHighlight.avgTurns}턴 · 최장 ${r.haggleHighlight.longestTurns}턴</div>
     <div class="muted">${r.disclaimer}</div>
-    <button class="primary">${r.nextChallenge.ctaLabel}</button>`;
+    <button class="primary" onclick="rematch()">${r.nextChallenge.ctaLabel}</button>`;
+}
+// 재대결 = 새 챌린지 개설 재사용 (재도전 엔드포인트 없음, v1.3) → 온보딩으로 복귀
+async function rematch() {
+  $('surveybox').classList.add('hidden'); $('paybox').classList.add('hidden'); $('estimate').innerHTML = '';
+  show('onboard'); await loadPlans();
+  const nc = nextChallengeRec;
+  if (nc) toast(`재대결 추천: ${nc.period} · ${nc.optionKey} · 주간 ${nc.suggestedBudget} — 기간을 선택해 새 챌린지를 시작하세요`);
 }
 async function shareCard() {
   const r = await call('POST', `/challenges/${challengeId}/report/share-card`, { mentions: [] });

@@ -28,7 +28,8 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/**")
                 .excludePathPatterns("/auth/**", "/plans", "/health", "/demo/ping", "/error",
                         "/invites/**", // 딥링크 랜딩은 로그인 전 진입 (§1)
-                        "/tester/**"); // 테스트용 프론트 정적 파일 (실 프론트 완성 시 삭제)
+                        "/tester/**", // 테스트용 프론트 정적 파일 (실 프론트 완성 시 삭제)
+                        "/app/**"); // 와이어프레임 충실판 데모 프론트 (실 프론트 완성 시 삭제)
     }
 
     @Override
