@@ -128,6 +128,7 @@ public class DemoController {
         int converted = 0;
         int expired = 0;
         int canceled = 0;
+        int closed = 0;
         for (String job : request.jobs()) {
             switch (job) {
                 case "PREPAID_CONVERT" -> converted += batchJobs.convertPrepaid(now);
@@ -136,10 +137,12 @@ public class DemoController {
                     expired += result.expired();
                     canceled += result.canceled();
                 }
+                case "CHALLENGE_CLOSE" -> closed += batchJobs.closeChallenges(now);
                 default -> throw new ApiException(ErrorCode.VALIDATION_FAILED,
-                        "jobs는 PREPAID_CONVERT / ITEM_EXPIRY 중에서 골라주세요.", "jobs", null);
+                        "jobs는 PREPAID_CONVERT / ITEM_EXPIRY / CHALLENGE_CLOSE 중에서 골라주세요.", "jobs", null);
             }
         }
-        return Map.of("mocked", true, "converted", converted, "expired", expired, "canceled", canceled);
+        return Map.of("mocked", true, "converted", converted, "expired", expired, "canceled", canceled,
+                "closed", closed);
     }
 }

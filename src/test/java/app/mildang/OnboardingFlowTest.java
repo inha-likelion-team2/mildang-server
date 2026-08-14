@@ -87,7 +87,7 @@ class OnboardingFlowTest {
 
     @Test
     @Order(4)
-    @DisplayName("예산 미리보기 — 명세 예시값 75/85/95")
+    @DisplayName("예산 미리보기 — 참조 스케일 정합 200/225/250 (팀 결정 2026-08-14)")
     void estimate() throws Exception {
         mvc.perform(post("/challenges/" + challengeId + "/budget/estimate")
                         .header("Authorization", "Bearer " + token)
@@ -96,25 +96,25 @@ class OnboardingFlowTest {
                                 {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"}}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.estimatedWeekly").value(100))
-                .andExpect(jsonPath("$.recommended").value(85))
+                .andExpect(jsonPath("$.estimatedWeekly").value(265))
+                .andExpect(jsonPath("$.recommended").value(225))
                 .andExpect(jsonPath("$.anchors.length()").value(3))
-                .andExpect(jsonPath("$.options[0].budget").value(75));
+                .andExpect(jsonPath("$.options[0].budget").value(200));
     }
 
     @Test
     @Order(5)
-    @DisplayName("예산 확정 → ACTIVE·잔액 85·27조합 시작 팁")
+    @DisplayName("예산 확정 → ACTIVE·잔액 225·27조합 시작 팁")
     void confirmBudget() throws Exception {
         mvc.perform(post("/challenges/" + challengeId + "/budget")
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":85}
+                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":225}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("ACTIVE"))
-                .andExpect(jsonPath("$.balance").value(85))
+                .andExpect(jsonPath("$.balance").value(225))
                 .andExpect(jsonPath("$.startTip.text").isNotEmpty());
 
         // 재확정은 409
@@ -122,7 +122,7 @@ class OnboardingFlowTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":85}
+                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":225}
                                 """))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.error.code").value("BUDGET_ALREADY_SET"));
@@ -136,7 +136,7 @@ class OnboardingFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.challenge.dayIndex").value(1))
                 .andExpect(jsonPath("$.challenge.label").value("1주 챌린지 · 1일차"))
-                .andExpect(jsonPath("$.budget.balance").value(85))
+                .andExpect(jsonPath("$.budget.balance").value(225))
                 .andExpect(jsonPath("$.budget.gaugePercent").value(100))
                 .andExpect(jsonPath("$.checkin.doneToday").value(false))
                 .andExpect(jsonPath("$.expiredConfirm.length()").value(0));
@@ -144,7 +144,7 @@ class OnboardingFlowTest {
 
     @Test
     @Order(7)
-    @DisplayName("프리셋 항목 생성(라면 80) → 기록 → 잔액 5, 재기록은 멱등 200 (§6.9)")
+    @DisplayName("프리셋 항목 생성(라면 80) → 기록 → 잔액 145, 재기록은 멱등 200 (§6.9)")
     void createAndRecordItem() throws Exception {
         MvcResult created = mvc.perform(post("/items")
                         .header("Authorization", "Bearer " + token)
@@ -153,14 +153,14 @@ class OnboardingFlowTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.status").value("PENDING"))
                 .andExpect(jsonPath("$.original.points").value(80))
-                .andExpect(jsonPath("$.effective.balanceAfter").value(5))
+                .andExpect(jsonPath("$.effective.balanceAfter").value(145))
                 .andReturn();
         mealItemId = json(created).get("id").asText();
 
         mvc.perform(post("/items/" + mealItemId + "/record").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.status").value("RECORDED"))
-                .andExpect(jsonPath("$.budget.balance").value(5))
+                .andExpect(jsonPath("$.budget.balance").value(145))
                 .andExpect(jsonPath("$.alreadyProcessed").value(false))
                 .andExpect(jsonPath("$.overflow").doesNotExist());
 
@@ -168,7 +168,21 @@ class OnboardingFlowTest {
         mvc.perform(post("/items/" + mealItemId + "/record").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alreadyProcessed").value(true))
-                .andExpect(jsonPath("$.budget.balance").value(5));
+                .andExpect(jsonPath("$.budget.balance").value(145));
+
+        // 초과 시나리오 준비 — 떡볶이 55·라면 80 추가 기록으로 잔액 10까지 소진
+        for (String preset : new String[] {"pst_tteok", "pst_ramen"}) {
+            MvcResult extra = mvc.perform(post("/items")
+                            .header("Authorization", "Bearer " + token)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"kind\":\"MEAL\",\"presetId\":\"" + preset + "\"}"))
+                    .andExpect(status().isCreated()).andReturn();
+            mvc.perform(post("/items/" + json(extra).get("id").asText() + "/record")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk());
+        }
+        mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
+                .andExpect(jsonPath("$.budget.balance").value(10));
 
         // MEAL 항목에 prepay는 400 — 선차감은 약속 전용
         mvc.perform(post("/items/" + mealItemId + "/prepay").header("Authorization", "Bearer " + token))
@@ -187,20 +201,20 @@ class OnboardingFlowTest {
                 .andReturn();
         promiseItemId = json(created).get("id").asText();
 
-        // 잔액 5에서 치킨 70 선차감 → −65. 초과는 막지 않고 overflow를 싣는다 (§6.5·§7.6)
+        // 잔액 10에서 치킨 70 선차감 → −60. 초과는 막지 않고 overflow를 싣는다 (§6.5·§7.6)
         mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.status").value("PREPAID"))
-                .andExpect(jsonPath("$.budget.balance").value(-65))
+                .andExpect(jsonPath("$.budget.balance").value(-60))
                 .andExpect(jsonPath("$.budget.prepaid").value(70))
                 .andExpect(jsonPath("$.alreadyProcessed").value(false))
-                .andExpect(jsonPath("$.overflow.balance").value(-65));
+                .andExpect(jsonPath("$.overflow.balance").value(-60));
 
         // 더블탭 — 이중 차감 없음, 멱등 표식 (§6.9)
         mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.alreadyProcessed").value(true))
-                .andExpect(jsonPath("$.budget.balance").value(-65))
+                .andExpect(jsonPath("$.budget.balance").value(-60))
                 .andExpect(jsonPath("$.budget.prepaid").value(70));
 
         // 대시보드 선차감 카드 + 게이지 0 클램프
@@ -214,9 +228,9 @@ class OnboardingFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.item.status").value("RECORDED"))
                 .andExpect(jsonPath("$.alreadyProcessed").value(true))
-                .andExpect(jsonPath("$.budget.balance").value(-65))
+                .andExpect(jsonPath("$.budget.balance").value(-60))
                 .andExpect(jsonPath("$.budget.prepaid").value(0))
-                .andExpect(jsonPath("$.budget.spent").value(150));
+                .andExpect(jsonPath("$.budget.spent").value(285));
 
         // RECORDED가 된 약속에 prepay 재시도 — 다른 종착 상태로의 전이라 409 (§6.9)
         mvc.perform(post("/items/" + promiseItemId + "/prepay").header("Authorization", "Bearer " + token))

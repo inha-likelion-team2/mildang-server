@@ -198,7 +198,7 @@ async function login() {
 }
 async function seed(s) { await call('POST', '/demo/seed', { scenario: s }); s === 'FRESH' ? show('onboard') : (s === 'COMPLETED' ? show('report') : show('dash')); }
 async function advanceDay(d) { await call('POST', '/demo/advance-day', { days: d }); refresh(); }
-async function runBatch() { await call('POST', '/demo/run-batch', { jobs: ['PREPAID_CONVERT', 'ITEM_EXPIRY'] }); refresh(); }
+async function runBatch() { await call('POST', '/demo/run-batch', { jobs: ['PREPAID_CONVERT', 'ITEM_EXPIRY', 'CHALLENGE_CLOSE'] }); refresh(); }
 
 // ---------- 온보딩 ----------
 async function loadPlans() {

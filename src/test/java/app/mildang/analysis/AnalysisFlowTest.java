@@ -66,7 +66,7 @@ class AnalysisFlowTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":85}
+                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":225}
                                 """))
                 .andExpect(status().isOk());
     }
@@ -126,7 +126,7 @@ class AnalysisFlowTest {
 
         mvc.perform(post("/items/" + itemId + "/record").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.budget.balance").value(5));
+                .andExpect(jsonPath("$.budget.balance").value(145));
     }
 
     @Test

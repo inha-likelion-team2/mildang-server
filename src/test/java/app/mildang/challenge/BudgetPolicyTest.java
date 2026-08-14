@@ -8,33 +8,33 @@ import org.junit.jupiter.api.Test;
 class BudgetPolicyTest {
 
     @Test
-    @DisplayName("명세 §3.3 예시 — 면 2-3·빵 0-1·간식 4+ → 주 100 추정, 주간 75/85/95")
-    void matchesSpecExample() {
+    @DisplayName("참조 스케일 정합 가중치 — 면 2-3·빵 0-1·간식 4+ → 주 265 추정, 주간 200/225/250 (팀 결정 2026-08-14, §3.3 예시 대체)")
+    void matchesReferenceScale() {
         BudgetPolicy.Result result =
                 BudgetPolicy.estimate(SurveyLevel.MID, SurveyLevel.LOW, SurveyLevel.HIGH, Period.W1);
 
-        assertThat(result.estimatedWeekly()).isEqualTo(100);
-        assertThat(result.recommended()).isEqualTo(85);
-        assertThat(result.options()).extracting(BudgetPolicy.Option::budget).containsExactly(75, 85, 95);
-        assertThat(result.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(75, 85, 95);
-        assertThat(result.totalBudget()).isEqualTo(85);
-        assertThat(result.rationale()).contains("주 100", "15%");
+        assertThat(result.estimatedWeekly()).isEqualTo(265);
+        assertThat(result.recommended()).isEqualTo(225);
+        assertThat(result.options()).extracting(BudgetPolicy.Option::budget).containsExactly(200, 225, 250);
+        assertThat(result.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(200, 225, 250);
+        assertThat(result.totalBudget()).isEqualTo(225);
+        assertThat(result.rationale()).contains("주 265", "15%");
     }
 
     @Test
-    @DisplayName("v1.3 §0.10 — 총액은 주간 × 곱수뿐: W2 150/170/190, W4 300/340/380")
+    @DisplayName("v1.3 §0.10 — 총액은 주간 × 곱수뿐: W2 400/450/500, W4 800/900/1000")
     void totalIsWeeklyTimesMultiplier() {
         BudgetPolicy.Result w2 =
                 BudgetPolicy.estimate(SurveyLevel.MID, SurveyLevel.LOW, SurveyLevel.HIGH, Period.W2);
-        assertThat(w2.options()).extracting(BudgetPolicy.Option::budget).containsExactly(75, 85, 95);
-        assertThat(w2.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(150, 170, 190);
-        assertThat(w2.totalBudget()).isEqualTo(170);
+        assertThat(w2.options()).extracting(BudgetPolicy.Option::budget).containsExactly(200, 225, 250);
+        assertThat(w2.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(400, 450, 500);
+        assertThat(w2.totalBudget()).isEqualTo(450);
 
         BudgetPolicy.Result w4 =
                 BudgetPolicy.estimate(SurveyLevel.MID, SurveyLevel.LOW, SurveyLevel.HIGH, Period.W4);
-        assertThat(w4.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(300, 340, 380);
-        assertThat(w4.totalBudget()).isEqualTo(340);
-        assertThat(w4.rationale()).contains("총 340");
+        assertThat(w4.options()).extracting(BudgetPolicy.Option::totalBudget).containsExactly(800, 900, 1000);
+        assertThat(w4.totalBudget()).isEqualTo(900);
+        assertThat(w4.rationale()).contains("총 900");
     }
 
     @Test

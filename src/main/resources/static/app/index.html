@@ -475,7 +475,7 @@
     <div class="row">
       <button class="chip" onclick="devCall('POST','/demo/advance-day',{days:1})">+1일</button>
       <button class="chip" onclick="devCall('POST','/demo/advance-day',{days:7})">+7일</button>
-      <button class="chip" onclick="devCall('POST','/demo/run-batch',{jobs:['PREPAID_CONVERT','ITEM_EXPIRY']})">배치</button>
+      <button class="chip" onclick="devCall('POST','/demo/run-batch',{jobs:['PREPAID_CONVERT','ITEM_EXPIRY','CHALLENGE_CLOSE']})">배치</button>
       <button class="chip" onclick="devCall('POST','/demo/reset')">리셋</button>
     </div>
   </div>
@@ -536,9 +536,12 @@ function nav(s) {
 }
 
 // ---------- 인증 · 데모 ----------
+let userKey = null; // 마지막 챌린지 ID 보관 — 완주 후 current 404여도 리포트 진입 (실 FE도 동일 패턴 필요)
+function saveLast(id) { challengeId = id; if (userKey && id) localStorage.setItem(userKey, id); }
 async function login(idToken) {
   const r = await call('POST', '/auth/social', { provider: 'KAKAO', idToken, deviceId: 'app-' + idToken });
   token = r.accessToken;
+  userKey = 'mildang.last.' + (r.user.id || idToken);
   $('dev-who').textContent = r.user.nickname;
   $('dev').classList.remove('on');
   await route();
@@ -546,15 +549,23 @@ async function login(idToken) {
 async function route() {
   try {
     const r = await call('GET', '/challenges/current');
-    challengeId = r.challenge.id; challenge = r.challenge;
+    saveLast(r.challenge.id); challenge = r.challenge;
     if (r.challenge.status === 'COMPLETED') nav('report'); else nav('dash');
-  } catch (e) { nav('plan'); }
+  } catch (e) {
+    // 진행 중 없음 → 저장해둔 마지막 챌린지가 완주 상태면 리포트로
+    const saved = userKey && localStorage.getItem(userKey);
+    if (saved) {
+      try { await call('GET', `/challenges/${saved}/report`); challengeId = saved; nav('report'); return; }
+      catch (e2) {}
+    }
+    nav('plan');
+  }
 }
 function openDev() { $('dev').classList.add('on'); }
 async function seed(s) {
   const r = await call('POST', '/demo/seed', { scenario: s });
   $('dev').classList.remove('on');
-  if (r.challengeId) challengeId = r.challengeId; // COMPLETED는 current 404라 시드 응답으로 보존
+  if (r.challengeId) saveLast(r.challengeId); // COMPLETED는 current 404라 시드 응답으로 보존
   if (s === 'FRESH') { nav('plan'); return; }
   if (s === 'COMPLETED') { nav('report'); return; }
   await route();
@@ -597,14 +608,14 @@ async function startPlan() {
     nav('pay'); return;
   }
   const r = await call('POST', '/challenges', { period: currentPeriod, paymentId: null });
-  challengeId = r.id; initSurvey(); nav('survey');
+  saveLast(r.id); initSurvey(); nav('survey');
 }
 async function payAndCreate() {
   $('pay-cta').textContent = '결제 중…';
   try {
     const pay = await call('POST', '/payments/checkout', { period: currentPeriod, provider: 'MOCK', receipt: '' });
     const r = await call('POST', '/challenges', { period: currentPeriod, paymentId: pay.id });
-    challengeId = r.id; initSurvey(); nav('survey');
+    saveLast(r.id); initSurvey(); nav('survey');
   } finally { $('pay-cta').textContent = '결제하기'; }
 }
 
@@ -656,7 +667,7 @@ async function confirmBudget(key, weekly) {
 // ---------- S3 · 대시보드 ----------
 async function refresh() {
   const r = await call('GET', '/challenges/current');
-  challengeId = r.challenge.id; challenge = r.challenge; budget = r.budget;
+  saveLast(r.challenge.id); challenge = r.challenge; budget = r.budget;
   if (r.challenge.status === 'COMPLETED') { nav('report'); return; }
   $('d-label').textContent = r.challenge.label; // label에 일차 포함 (예: 1주 챌린지 · 4일차)
   $('d-balance').textContent = r.budget.balance;

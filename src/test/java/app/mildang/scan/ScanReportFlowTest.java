@@ -78,7 +78,7 @@ class ScanReportFlowTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":85}
+                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":225}
                                 """))
                 .andExpect(status().isOk());
     }
@@ -98,12 +98,12 @@ class ScanReportFlowTest {
                 .andExpect(jsonPath("$.menus[0].name").value("삼겹살"))
                 .andExpect(jsonPath("$.menus[0].points").value(0))
                 .andExpect(jsonPath("$.menus[4].name").value("칼국수"))
-                // 잔액 85 · 남은 끼수 6 → 상한 14 → 이하 중 최고가 = 된장찌개 5
-                .andExpect(jsonPath("$.recommendation.points").value(5))
+                // 잔액 225 · 남은 끼수 6 → 상한 37 → 이하 중 최고가 = 제육볶음 15
+                .andExpect(jsonPath("$.recommendation.points").value(15))
                 .andReturn();
         scanId = json(result).get("id").asText();
         String comment = json(result).get("recommendation").get("comment").asText();
-        org.assertj.core.api.Assertions.assertThat(comment).contains("제육볶음");
+        org.assertj.core.api.Assertions.assertThat(comment).contains("냉면"); // 비교 대상 = 상한 초과 중 최저가
 
         // 재진입 조회 동일 구조
         mvc.perform(get("/scans/" + scanId).header("Authorization", "Bearer " + token))
@@ -139,7 +139,7 @@ class ScanReportFlowTest {
         mvc.perform(post("/items/" + json(item).get("id").asText() + "/record")
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.budget.balance").value(60));
+                .andExpect(jsonPath("$.budget.balance").value(200));
     }
 
     @Test

@@ -66,7 +66,7 @@ class HaggleFlowTest {
                         .header("Authorization", "Bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":85}
+                                {"survey":{"noodle":"2-3","bread":"0-1","snack":"4+"},"optionKey":"AS_IS","budget":225}
                                 """))
                 .andExpect(status().isOk());
 
@@ -99,7 +99,7 @@ class HaggleFlowTest {
                 .andExpect(jsonPath("$.maxTurns").value(10))
                 .andExpect(jsonPath("$.turn").value(0))
                 .andExpect(jsonPath("$.frame").value("SAVE"))
-                .andExpect(jsonPath("$.balance").value(85))
+                .andExpect(jsonPath("$.balance").value(225))
                 .andExpect(jsonPath("$.target.name").value("라면"))
                 .andExpect(jsonPath("$.agreed").isEmpty())
                 .andExpect(jsonPath("$.chips.length()").value(4))
@@ -123,8 +123,8 @@ class HaggleFlowTest {
                 .andExpect(jsonPath("$.proposal.points").value(40))
                 .andExpect(jsonPath("$.proposal.lever").value("AMOUNT"))
                 .andExpect(jsonPath("$.agreed.points").value(40))
-                .andExpect(jsonPath("$.simulation.adjusted.balanceAfter").value(45))
-                .andExpect(jsonPath("$.simulation.original.balanceAfter").value(5))
+                .andExpect(jsonPath("$.simulation.adjusted.balanceAfter").value(185))
+                .andExpect(jsonPath("$.simulation.original.balanceAfter").value(145))
                 .andExpect(jsonPath("$.closeButtonLabel").value("대화 종료 · 40으로 반영"));
     }
 
@@ -143,7 +143,7 @@ class HaggleFlowTest {
         // ★ 잔액 불변 확인 — 차감은 record에서만
         mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.budget.balance").value(85))
+                .andExpect(jsonPath("$.budget.balance").value(225))
                 .andExpect(jsonPath("$.budget.spent").value(0));
 
         // 종료된 세션에 메시지 → 409
@@ -157,11 +157,11 @@ class HaggleFlowTest {
 
     @Test
     @Order(5)
-    @DisplayName("기록 — 합의값 40으로 차감 (85→45), 오프닝에 지난 합의 언급(재흥정)")
+    @DisplayName("기록 — 합의값 40으로 차감 (225→185), 오프닝에 지난 합의 언급(재흥정)")
     void recordAndReopen() throws Exception {
         mvc.perform(post("/items/" + itemId + "/record").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.budget.balance").value(45));
+                .andExpect(jsonPath("$.budget.balance").value(185));
 
         // 같은 메뉴 재분석·재흥정 — lastAgreement가 오프닝에 언급 (부록 A #3)
         MvcResult analysis = mvc.perform(post("/analyses/text")
