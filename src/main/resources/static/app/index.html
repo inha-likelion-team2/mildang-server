@@ -210,6 +210,7 @@
     <span data-av="36"></span>
     <div class="bubble" id="d-tip"></div>
   </div>
+  <div id="d-today" style="margin-top:16px"></div>
   <div id="d-prepaid" style="display:flex;flex-direction:column;gap:8px;margin-top:14px"></div>
   <div id="d-expired" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
   <button onclick="nav('promise')" style="margin-top:10px;background:none;border:1.5px dashed rgba(0,0,0,.28);border-radius:999px;padding:11px;font-size:12.5px;font-weight:700;color:rgba(0,0,0,.55)">+ 약속 잡혔어요? 미리 사전 결재하기</button>
@@ -324,6 +325,20 @@
   </div>
   <div class="grow"></div>
   <p style="margin:0;text-align:center;font-size:11.5px;color:rgba(0,0,0,.4)" id="c-foot">건너뛰어도 괜찮아요.</p>
+</div>
+
+<!-- S6+ · 완주 안내 — 리포트로 바로 튕기지 않고 사용자가 눌러서 들어간다 -->
+<div class="scr" id="s-done">
+  <div class="grow"></div>
+  <div style="text-align:center">
+    <span data-av="72"></span>
+    <h2 class="disp" style="margin:14px 0 0;font-size:27px" id="dn-title">챌린지가 끝났어요</h2>
+    <p style="margin:10px 0 0;font-size:13.5px;color:rgba(0,0,0,.6);line-height:1.6" id="dn-sub">
+      기간 동안의 기록을 리포트로 정리해뒀어요. 준비되면 눌러주세요.</p>
+  </div>
+  <div class="grow"></div>
+  <button class="pill-btn" style="width:100%;padding:17px" onclick="nav('report')">리포트 보기 →</button>
+  <button onclick="nav('plan')" style="margin-top:9px;background:none;border:none;font-size:12.5px;font-weight:700;color:rgba(0,0,0,.45)">나중에 볼게요 · 새 챌린지 고르기</button>
 </div>
 
 <!-- S7 · 완주 리포트 -->
@@ -550,12 +565,12 @@ async function route() {
   try {
     const r = await call('GET', '/challenges/current');
     saveLast(r.challenge.id); challenge = r.challenge;
-    if (r.challenge.status === 'COMPLETED') nav('report'); else nav('dash');
+    if (r.challenge.status === 'COMPLETED') nav('done'); else nav('dash');
   } catch (e) {
-    // 진행 중 없음 → 저장해둔 마지막 챌린지가 완주 상태면 리포트로
+    // 진행 중 없음 → 저장해둔 마지막 챌린지가 완주 상태면 리포트 안내 화면으로 (자동 이동 아님)
     const saved = userKey && localStorage.getItem(userKey);
     if (saved) {
-      try { await call('GET', `/challenges/${saved}/report`); challengeId = saved; nav('report'); return; }
+      try { await call('GET', `/challenges/${saved}/report`); challengeId = saved; nav('done'); return; }
       catch (e2) {}
     }
     nav('plan');
@@ -567,7 +582,7 @@ async function seed(s) {
   $('dev').classList.remove('on');
   if (r.challengeId) saveLast(r.challengeId); // COMPLETED는 current 404라 시드 응답으로 보존
   if (s === 'FRESH') { nav('plan'); return; }
-  if (s === 'COMPLETED') { nav('report'); return; }
+  if (s === 'COMPLETED') { nav('done'); return; }
   await route();
 }
 async function devCall(m, p, b) { await call(m, p, b); $('dev').classList.remove('on'); if (token) route(); }
@@ -668,7 +683,7 @@ async function confirmBudget(key, weekly) {
 async function refresh() {
   const r = await call('GET', '/challenges/current');
   saveLast(r.challenge.id); challenge = r.challenge; budget = r.budget;
-  if (r.challenge.status === 'COMPLETED') { nav('report'); return; }
+  if (r.challenge.status === 'COMPLETED') { nav('done'); return; }
   $('d-label').textContent = r.challenge.label; // label에 일차 포함 (예: 1주 챌린지 · 4일차)
   $('d-balance').textContent = r.budget.balance;
   $('d-total').textContent = '/ ' + r.budget.total;
@@ -679,6 +694,18 @@ async function refresh() {
   $('d-pace').textContent = r.pace.note;
   if (r.tip) { $('d-tiprow').style.display = 'flex'; $('d-tip').textContent = r.tip.text; }
   else $('d-tiprow').style.display = 'none';
+  // 오늘 먹은 것 — 그날 기록한 메뉴와 값 (팀 이슈 #2)
+  const t = r.today;
+  $('d-today').innerHTML = !t || !t.count ? '' :
+    `<div style="background:#fff;border-radius:16px;padding:13px 15px;border:1px solid rgba(0,0,0,.08)">
+      <div style="display:flex;align-items:baseline;justify-content:space-between">
+        <div style="font-size:12.5px;font-weight:700;color:#333">오늘 먹은 것 · ${t.count}개</div>
+        <div class="disp" style="font-size:20px;color:#333">${t.totalPoints}</div></div>
+      <div style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+        ${t.items.map(i => `<div style="display:flex;align-items:center;gap:8px;font-size:12.5px">
+          <span style="flex:1">${i.name} <span style="color:rgba(0,0,0,.45)">— ${i.label}</span>${i.haggled ? ' <span style="font-size:10.5px;font-weight:700;color:#2b2b2b">밀당</span>' : ''}</span>
+          <span class="disp" style="font-size:15px;color:#333">${i.points}</span></div>`).join('')}
+      </div></div>`;
   $('d-prepaid').innerHTML = r.prepaidItems.map(p =>
     `<div style="background:#fff;border-radius:16px;padding:13px 15px;display:flex;align-items:center;gap:12px;border:1px solid rgba(0,0,0,.08)">
       <div class="disp" style="font-size:24px;color:#333;background:#e9e9e9;border-radius:12px;padding:6px 10px">${p.points}</div>
@@ -719,11 +746,16 @@ function itemCard(i, ctx) {
   else actions = `<div class="card-actions">
       <button class="go" onclick="openHaggle('${i.id}','FREE','meal')">밀당하기</button>
       <button class="alt" onclick="recordItem('${i.id}').then(loadMeal)">기록하기</button></div>`;
+  // 확정 전 항목은 목록에서 지울 수 있다 (DELETE /items/{id})
+  const removable = i.status !== 'PREPAID' && i.status !== 'RECORDED';
+  const removeBtn = removable
+    ? `<button title="목록에서 빼기" onclick="removeItem('${i.id}','${ctx}')" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;color:rgba(0,0,0,.3);padding:2px 4px">✕</button>`
+    : '';
   return `<div class="item-card${i.status === 'HAGGLED' ? ' hl' : ''}">
     <div style="display:flex;align-items:center;gap:11px">${badge}
       <div style="flex:1"><div style="font-size:14.5px;font-weight:900">${title}</div>
         <div style="font-size:11px;color:rgba(0,0,0,.55);margin-top:1px">${i.adjusted ? (i.adjusted.basis || '흥정으로 조정된 구성') : (i.original.basis || '')}</div></div>
-      ${statePill}</div>
+      ${statePill}${removeBtn}</div>
     <div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(0,0,0,.07);font-size:11.5px;color:rgba(0,0,0,.6)">${note}</div>
     ${actions}</div>`;
 }
@@ -732,6 +764,11 @@ async function recordItem(id) {
   if (r.overflow) toast(`잔액 ${r.overflow.balance} — ${r.overflow.note}`);
   if (r.budget) budget = r.budget;
   return r;
+}
+async function removeItem(id, ctx) {
+  await call('DELETE', `/items/${id}`, null);
+  toast('목록에서 뺐어요');
+  if (ctx === 'promise') loadPromise(); else loadMeal();
 }
 async function prepayItem(id) {
   const r = await call('POST', `/items/${id}/prepay`, {});
@@ -830,25 +867,30 @@ function renderScan() {
         <div style="font-size:11.5px;font-weight:700;color:#333">밀당이의 추천 · 잔액 ${budget ? budget.balance : '?'}${mealsLeft ? ' · 앞으로 ' + mealsLeft + '끼' : ''}</div></div>
       <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px">
         <div style="font-size:19px;font-weight:900">${m ? m.name : ''}</div>
-        <div class="disp" style="font-size:24px;color:#2b2b2b">${rec.points}</div></div>
+        <div class="disp" style="font-size:24px;color:#2b2b2b">${m && m.item ? m.item.points : rec.points}</div>
+        ${m && m.item && m.item.haggled ? `<div style="font-size:11.5px;color:rgba(0,0,0,.5)">밀당으로 ${rec.points} → ${m.item.points}</div>` : ''}</div>
       ${rec.comment ? `<p style="margin:5px 0 0;font-size:12.5px;line-height:1.5;color:rgba(0,0,0,.7)">${rec.comment}</p>` : ''}
       <div style="margin-top:10px;display:flex;gap:7px">
-        <button onclick="scanRecord('${rec.menuId}',${rec.points})" style="flex:1;background:#2b2b2b;border:none;color:#fff;border-radius:999px;padding:10px;font-size:12.5px;font-weight:700">탭해서 ${rec.points} 차감</button>
+        <button onclick="scanRecord('${rec.menuId}')" style="flex:1;background:#2b2b2b;border:none;color:#fff;border-radius:999px;padding:10px;font-size:12.5px;font-weight:700">탭해서 ${m && m.item ? m.item.points : rec.points} 차감</button>
         <button onclick="scanHaggle('${rec.menuId}')" style="flex:1;background:#fff;border:1.5px solid #2b2b2b;border-radius:999px;padding:10px;font-size:12.5px;font-weight:700">밀당이랑 더 얘기하기 →</button>
       </div></div>`;
   } else $('sc-rec').innerHTML = '';
   $('sc-menus').innerHTML = r.menus.map(m => {
     const isRec = rec && rec.menuId === m.id;
-    return `<div style="background:#fff;border-radius:15px;padding:11px 13px;display:flex;align-items:center;gap:12px;border:${isRec ? '1.5px solid #c9c9c9' : '1px solid rgba(0,0,0,.07)'}">
-      <div onclick="editMenu('${m.id}',this)" title="탭해서 수정" style="cursor:pointer;min-width:56px;text-align:center;background:${m.points >= 60 ? '#1f1f1f' : m.points >= 30 ? '#bbb' : '#ececec'};color:${m.points >= 60 ? '#fff' : '#222'};border-radius:11px;padding:7px 6px">
-        <span class="disp" style="font-size:21px;line-height:1">${m.points}</span>${m.pm ? `<span style="font-size:10px;opacity:.7"> ±${m.pm}</span>` : ''}</div>
-      <div style="flex:1"><div style="font-size:14.5px;font-weight:700">${m.name}${isRec ? ' <span style="font-size:10.5px;color:#2b2b2b;font-weight:700">추천</span>' : ''}${m.edited ? ' ✎' : ''}</div>
-        <div style="font-size:11.5px;color:rgba(0,0,0,.55)">${m.basis || ''}</div></div>
+    // 흥정을 마친 행은 합의값으로 보여준다 — 서버가 menus[].item으로 알려준다
+    const hag = m.item && m.item.haggled ? m.item : null;
+    const shown = hag ? hag.points : m.points;
+    return `<div style="background:#fff;border-radius:15px;padding:11px 13px;display:flex;align-items:center;gap:12px;border:${hag ? '1.5px solid #2b2b2b' : isRec ? '1.5px solid #c9c9c9' : '1px solid rgba(0,0,0,.07)'}">
+      <div onclick="editMenu('${m.id}',this)" title="탭해서 수정" style="cursor:pointer;min-width:56px;text-align:center;background:${shown >= 60 ? '#1f1f1f' : shown >= 30 ? '#bbb' : '#ececec'};color:${shown >= 60 ? '#fff' : '#222'};border-radius:11px;padding:7px 6px">
+        <span class="disp" style="font-size:21px;line-height:1">${shown}</span>${!hag && m.pm ? `<span style="font-size:10px;opacity:.7"> ±${m.pm}</span>` : ''}</div>
+      <div style="flex:1"><div style="font-size:14.5px;font-weight:700">${m.name}${isRec ? ' <span style="font-size:10.5px;color:#2b2b2b;font-weight:700">추천</span>' : ''}${m.edited ? ' ✎' : ''}
+        ${hag ? `<span style="font-weight:400;color:rgba(0,0,0,.4);text-decoration:line-through">${m.points}</span> <span style="color:rgba(0,0,0,.35)">→</span> ${hag.label}` : ''}</div>
+        <div style="font-size:11.5px;color:rgba(0,0,0,.55)">${hag ? '밀당으로 합의한 값' : (m.basis || '')}</div></div>
       <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-        <div style="font-size:10.5px;font-weight:700;color:#333">${CONF[m.confidence] || m.confidence}</div>
+        <div style="font-size:10.5px;font-weight:700;color:#333">${hag ? '합의' : (CONF[m.confidence] || m.confidence)}</div>
         <div style="display:flex;gap:4px">
-          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanHaggle('${m.id}')">밀당</button>
-          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanRecord('${m.id}',${m.points})">기록</button>
+          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanHaggle('${m.id}')">${hag ? '다시 밀당' : '밀당'}</button>
+          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanRecord('${m.id}')">${hag ? `${shown} 기록` : '기록'}</button>
         </div></div></div>`;
   }).join('');
 }

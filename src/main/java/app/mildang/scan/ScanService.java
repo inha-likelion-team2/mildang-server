@@ -12,6 +12,10 @@ import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
 import app.mildang.common.model.Confidence;
 import app.mildang.common.util.Hashes;
+import app.mildang.item.Item;
+import app.mildang.item.ItemRepository;
+import app.mildang.item.ItemStatus;
+import app.mildang.scan.ScanDtos.MenuItemView;
 import app.mildang.scan.ScanDtos.MenuRow;
 import app.mildang.scan.ScanDtos.Recommendation;
 import app.mildang.scan.ScanDtos.ScanResponse;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import javax.imageio.ImageIO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,18 +41,22 @@ public class ScanService {
     private static final Logger log = LoggerFactory.getLogger(ScanService.class);
     private static final int MAX_BYTES = 10 * 1024 * 1024;
     private static final int MAX_EDGE = 4096;
+    private static final List<ItemStatus> LIVE = List.of(ItemStatus.PENDING, ItemStatus.HAGGLED);
 
     private final ScanRepository scanRepository;
     private final ScanMenuRepository scanMenuRepository;
     private final ChallengeService challengeService;
     private final AiGateway aiGateway;
+    private final ItemRepository itemRepository;
 
     public ScanService(ScanRepository scanRepository, ScanMenuRepository scanMenuRepository,
-                       ChallengeService challengeService, AiGateway aiGateway) {
+                       ChallengeService challengeService, AiGateway aiGateway,
+                       ItemRepository itemRepository) {
         this.scanRepository = scanRepository;
         this.scanMenuRepository = scanMenuRepository;
         this.challengeService = challengeService;
         this.aiGateway = aiGateway;
+        this.itemRepository = itemRepository;
     }
 
     /** 처리 순서(§15.3.1): 전처리 → extract → estimate(batch) → 정렬·추천 → comment → 저장 */
@@ -296,12 +305,26 @@ public class ScanService {
                         recommended.getPoints(), scan.getRecommendationComment());
             }
         }
+        // 메뉴별로 살아있는 항목을 붙인다 — 흥정 후 4b로 돌아왔을 때 조정값이 보이도록 (§5.3)
+        Map<Integer, Item> liveItems = itemRepository
+                .findByChallengeIdAndSourceScanIdAndStatusInOrderByCreatedAtDesc(
+                        scan.getChallengeId(), scan.getId(), LIVE)
+                .stream()
+                .collect(Collectors.toMap(Item::getSourceMenuNo, i -> i, (newer, older) -> newer));
+
         return new ScanResponse(scan.getId(), scan.getPlace(), scan.getPlaceConfidence(), scan.getScannedAt(),
-                menus.stream().map(ScanService::row).toList(), recommendation);
+                menus.stream().map(m -> row(m, liveItems.get(m.getMenuNo()))).toList(), recommendation);
     }
 
     private static MenuRow row(ScanMenu menu) {
+        return row(menu, null);
+    }
+
+    private static MenuRow row(ScanMenu menu, Item item) {
+        MenuItemView itemView = item == null ? null
+                : new MenuItemView(item.getId(), item.getStatus(), item.effectivePoints(),
+                        item.isHaggled() ? item.getAdjustedLabel() : null, item.isHaggled());
         return new MenuRow("mnu_" + menu.getMenuNo(), menu.getName(), menu.getPoints(), menu.getPm(),
-                menu.getConfidence(), menu.getBasis(), menu.isEdited());
+                menu.getConfidence(), menu.getBasis(), menu.isEdited(), itemView);
     }
 }

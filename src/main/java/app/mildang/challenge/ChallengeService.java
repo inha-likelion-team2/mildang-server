@@ -16,6 +16,8 @@ import app.mildang.challenge.ChallengeDtos.PrepaidItemView;
 import app.mildang.challenge.ChallengeDtos.StartTip;
 import app.mildang.challenge.ChallengeDtos.Survey;
 import app.mildang.challenge.ChallengeDtos.TipView;
+import app.mildang.challenge.ChallengeDtos.TodayItemView;
+import app.mildang.challenge.ChallengeDtos.TodayView;
 import app.mildang.checkin.CheckinRepository;
 import app.mildang.common.config.MildangProps;
 import app.mildang.common.error.ApiException;
@@ -236,6 +238,19 @@ public class ChallengeService {
                                 + i.effectivePoints() + "으로 합의한 " + i.getOriginalName() + ", 드셨어요?"))
                 .toList();
 
+        // 오늘 먹은 것 — 05:00 경계 기준 오늘 기록된 항목 (선차감분은 요일 경과 배치가 RECORDED로 넘긴다)
+        LocalDate today = LogicalDate.of(now);
+        List<TodayItemView> todayItems = itemRepository
+                .findByChallengeIdAndLogicalDateAndStatusInOrderByRecordedAtAsc(
+                        challenge.getId(), today, List.of(ItemStatus.RECORDED))
+                .stream()
+                .map(i -> new TodayItemView(i.getId(), i.getOriginalName(),
+                        i.isHaggled() ? i.getAdjustedLabel() : i.getOriginalUnit(),
+                        i.effectivePoints(), i.isHaggled(), i.getKind(), i.getRecordedAt()))
+                .toList();
+        TodayView todayView = new TodayView(today.toString(), todayItems.size(),
+                todayItems.stream().mapToInt(TodayItemView::points).sum(), todayItems);
+
         boolean doneToday = checkinRepository
                 .findByChallengeIdAndDate(challenge.getId(), LogicalDate.of(now)).isPresent();
         Instant dueAt = LogicalDate.of(now).atTime(22, 0).atZone(LogicalDate.KST).toInstant();
@@ -252,6 +267,7 @@ public class ChallengeService {
                 new PaceView(expected, diff, note, state),
                 null,
                 tip,
+                todayView,
                 prepaid,
                 new CheckinView(doneToday, dueAt),
                 expiredConfirm);

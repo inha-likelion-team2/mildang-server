@@ -22,7 +22,9 @@ public class ItemDtos {
     public record AdjustedView(String label, int points, String basis, String haggleId, Integer turns) {
     }
 
-    public record SourceView(SourceType type, String refId) {
+    /** IMAGE 항목은 refId가 없다 — 스캔 좌표(scanId+menuId)로 4b 행과 이어진다 */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record SourceView(SourceType type, String refId, String scanId, String menuId) {
     }
 
     public record EffectiveView(int points, int balanceAfter, int balanceIfOriginal) {

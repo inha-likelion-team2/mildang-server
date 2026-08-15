@@ -1,6 +1,8 @@
 package app.mildang.item;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface ItemRepository extends JpaRepository<Item, String> {
@@ -13,4 +15,15 @@ public interface ItemRepository extends JpaRepository<Item, String> {
     List<Item> findByStatus(ItemStatus status);
 
     List<Item> findByChallengeIdIn(List<String> challengeIds);
+
+    /** 스캔 메뉴 한 칸에 딸린 항목들 — 4b 행 표시·항목 재사용에 쓴다 (§6.3 B) */
+    List<Item> findByChallengeIdAndSourceScanIdAndStatusInOrderByCreatedAtDesc(
+            String challengeId, String sourceScanId, List<ItemStatus> statuses);
+
+    Optional<Item> findFirstByChallengeIdAndSourceScanIdAndSourceMenuNoAndStatusInOrderByCreatedAtDesc(
+            String challengeId, String sourceScanId, Integer sourceMenuNo, List<ItemStatus> statuses);
+
+    /** 그날 먹은 것 — 대시보드 today 블록 */
+    List<Item> findByChallengeIdAndLogicalDateAndStatusInOrderByRecordedAtAsc(
+            String challengeId, LocalDate logicalDate, List<ItemStatus> statuses);
 }

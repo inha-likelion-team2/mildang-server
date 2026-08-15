@@ -36,6 +36,9 @@ public class ItemService {
     private static final List<ItemStatus> UNRECORDED =
             List.of(ItemStatus.PENDING, ItemStatus.HAGGLED, ItemStatus.EXPIRED);
 
+    /** 아직 확정 전이라 흥정·수정이 가능한 상태 — 스캔 메뉴당 하나만 살아 있다 */
+    static final List<ItemStatus> LIVE = List.of(ItemStatus.PENDING, ItemStatus.HAGGLED);
+
     private final ItemRepository itemRepository;
     private final ChallengeService challengeService;
     private final AnalysisService analysisService;
@@ -70,6 +73,15 @@ public class ItemService {
         }
         if (request.kind() == ItemKind.PROMISE && request.weekday() == null) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "약속에는 요일이 필요해요.", "weekday", null);
+        }
+
+        // 스캔 메뉴 한 칸 = 살아있는 항목 하나. 이미 있으면 그걸 돌려준다 — 밀당한 항목을 두고
+        // 원래값짜리 새 항목이 생겨 흥정 결과가 사라지던 문제(이슈 #1)
+        if (request.scanId() != null && request.menuId() != null) {
+            Item existing = findLiveScanItem(challenge, request.scanId(), request.menuId());
+            if (existing != null && existing.getKind() == request.kind()) {
+                return view(existing, challenge);
+            }
         }
 
         Instant now = Instant.now();
@@ -264,6 +276,15 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
     }
 
+    /** 해당 스캔 메뉴로 만들어져 아직 확정되지 않은 항목 (없으면 null) — 소유 검증은 requireMenu가 한다 */
+    private Item findLiveScanItem(Challenge challenge, String scanId, String menuId) {
+        app.mildang.scan.ScanMenu menu = scanService.requireMenu(challenge.getUserId(), scanId, menuId);
+        return itemRepository
+                .findFirstByChallengeIdAndSourceScanIdAndSourceMenuNoAndStatusInOrderByCreatedAtDesc(
+                        challenge.getId(), menu.getScanId(), menu.getMenuNo(), LIVE)
+                .orElse(null);
+    }
+
     /** 다른 도메인(흥정 등)에서 항목 응답을 만들 때 사용 */
     public ItemView viewOf(Item item, Challenge challenge) {
         return view(item, challenge);
@@ -282,7 +303,8 @@ public class ItemService {
                 : null;
 
         return new ItemView(item.getId(), item.getKind(), item.getStatus(),
-                new SourceView(item.getSourceType(), item.getSourceRefId()),
+                new SourceView(item.getSourceType(), item.getSourceRefId(), item.getSourceScanId(),
+                        item.getSourceMenuNo() == null ? null : "mnu_" + item.getSourceMenuNo()),
                 new OriginalView(item.getOriginalName(), item.getOriginalUnit(), item.getOriginalPoints(),
                         item.getOriginalPm(), item.getOriginalConfidence(), item.getOriginalBasis()),
                 adjusted,
