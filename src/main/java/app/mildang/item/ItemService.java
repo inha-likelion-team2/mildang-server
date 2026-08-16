@@ -39,6 +39,9 @@ public class ItemService {
     /** 아직 확정 전이라 흥정·수정이 가능한 상태 — 스캔 메뉴당 하나만 살아 있다 */
     static final List<ItemStatus> LIVE = List.of(ItemStatus.PENDING, ItemStatus.HAGGLED);
 
+    /** 같은 항목 재생성을 중복 제출로 보는 창 — 사람이 의도적으로 두 번 담기엔 너무 짧다 */
+    private static final java.time.Duration DEDUPE_WINDOW = java.time.Duration.ofSeconds(3);
+
     private final ItemRepository itemRepository;
     private final ChallengeService challengeService;
     private final AnalysisService analysisService;
@@ -138,8 +141,32 @@ public class ItemService {
             item.setOriginalBasis(menu.getBasis() != null ? menu.getBasis() : "메뉴판 스캔 추정");
         }
 
+        // 더블 탭·한글 IME Enter 이중 발생 방어 (이슈 #1 추가 피드백) — 같은 메뉴·같은 값의
+        // 미확정 항목이 방금 만들어졌으면 새로 만들지 않고 그걸 돌려준다. 클라 가드가 빠진
+        // 클라이언트도 보호된다. 사용자가 몇 초 안에 같은 메뉴를 두 번 담으려면 시트를 닫고
+        // 다시 열어 또 입력해야 하므로 오탐은 사실상 없다.
+        Item justCreated = findRecentDuplicate(challenge, item, now);
+        if (justCreated != null) {
+            return view(justCreated, challenge);
+        }
+
         itemRepository.save(item);
         return view(item, challenge);
+    }
+
+    /** 방금(DEDUPE_WINDOW 안에) 만들어진 같은 내용의 미확정 항목 (없으면 null) */
+    private Item findRecentDuplicate(Challenge challenge, Item candidate, Instant now) {
+        Instant since = now.minus(DEDUPE_WINDOW);
+        return itemRepository
+                .findByChallengeIdAndStatusInOrderByCreatedAtDesc(challenge.getId(), LIVE)
+                .stream()
+                .filter(i -> i.getCreatedAt().isAfter(since))
+                .filter(i -> i.getKind() == candidate.getKind())
+                .filter(i -> i.getOriginalName().equals(candidate.getOriginalName()))
+                .filter(i -> i.getOriginalPoints() == candidate.getOriginalPoints())
+                .filter(i -> i.getWeekday() == candidate.getWeekday())
+                .findFirst()
+                .orElse(null);
     }
 
     @Transactional(readOnly = true)
