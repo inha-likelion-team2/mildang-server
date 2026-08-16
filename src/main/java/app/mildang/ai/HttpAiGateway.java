@@ -5,8 +5,10 @@ import app.mildang.ai.AiDtos.EstimateRequest;
 import app.mildang.common.config.MildangProps;
 import java.util.Arrays;
 import java.util.List;
+import java.net.http.HttpClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import tools.jackson.databind.ObjectMapper;
@@ -20,8 +22,15 @@ public class HttpAiGateway implements AiGateway {
     private final ObjectMapper objectMapper;
 
     public HttpAiGateway(MildangProps props, ObjectMapper objectMapper) {
+        // 타임아웃 없이 두면 AI가 «멈췄을» 때 요청 스레드와 DB 커넥션을 무한 점유한다.
+        // 호출이 전부 @Transactional 안이라 풀이 마르면 API 전체가 같이 멈춘다.
+        // 요청 팩토리를 직접 넣는 이유: 정적 빌더는 spring.http.client.* 설정을 타지 않는다.
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(
+                HttpClient.newBuilder().connectTimeout(props.ai().connectTimeout()).build());
+        factory.setReadTimeout(props.ai().readTimeout());
         this.restClient = RestClient.builder()
                 .baseUrl(props.ai().baseUrl())
+                .requestFactory(factory)
                 .build();
         this.objectMapper = objectMapper;
     }

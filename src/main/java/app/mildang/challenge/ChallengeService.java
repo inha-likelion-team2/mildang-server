@@ -72,10 +72,20 @@ public class ChallengeService {
 
     @Transactional
     public CreateResponse create(String userId, CreateRequest request) {
-        challengeRepository.findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, IN_PROGRESS)
-                .ifPresent(c -> {
-                    throw new ApiException(ErrorCode.CHALLENGE_IN_PROGRESS);
-                });
+        // 기간이 끝난 ACTIVE를 여기서 확정한다. requireActive의 전이는 예외와 함께 롤백되므로
+        // 이 경로가 없으면 "current는 404인데 새 챌린지는 409"인 상태에 갇힌다.
+        completeStaleActive(userId);
+
+        Challenge inProgress = challengeRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, IN_PROGRESS).orElse(null);
+        if (inProgress != null) {
+            // 예산 확정 전에 이탈했다가 다시 들어온 경우 — 409로 막으면 빠져나갈 API가 없어 계정이 잠긴다.
+            // 아직 예산도 항목도 없는 껍데기이므로 그대로 이어서 쓴다.
+            if (inProgress.getStatus() == ChallengeStatus.ONBOARDING) {
+                return resumeOnboarding(inProgress, userId, request);
+            }
+            throw new ApiException(ErrorCode.CHALLENGE_IN_PROGRESS);
+        }
 
         Payment payment = null;
         if (request.period().isFree()) {
@@ -109,6 +119,35 @@ public class ChallengeService {
 
         return new CreateResponse(challenge.getId(), challenge.getPeriod(), challenge.getStatus(),
                 challenge.getTotalDays(), needsSurvey, null);
+    }
+
+    /**
+     * 예산 확정 전 챌린지를 이어서 쓴다.
+     * 기간이 달라졌으면 갈아끼우되, 이미 결제가 붙어 있으면 그 결제를 버리지 않으려고 기존 기간을 유지한다.
+     */
+    private CreateResponse resumeOnboarding(Challenge existing, String userId, CreateRequest request) {
+        if (existing.getPeriod() != request.period() && existing.getPaymentId() == null) {
+            Payment payment = request.period().isFree() ? null : requirePaid(userId, request);
+            existing.setPeriod(request.period());
+            existing.setTotalDays(request.period().totalDays());
+            existing.setPaymentId(request.paymentId());
+            if (payment != null) {
+                payment.setConsumedByChallengeId(existing.getId());
+            }
+        }
+        return new CreateResponse(existing.getId(), existing.getPeriod(), existing.getStatus(),
+                existing.getTotalDays(), existing.isNeedsSurvey(), null);
+    }
+
+    /** 기간이 끝났는데 ACTIVE로 남아 있는 챌린지를 COMPLETED로 확정 (쓰기 트랜잭션에서 커밋된다) */
+    private void completeStaleActive(String userId) {
+        challengeRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, List.of(ChallengeStatus.ACTIVE))
+                .filter(c -> c.getEndsAt() != null && Instant.now().isAfter(c.getEndsAt()))
+                .ifPresent(c -> {
+                    c.setStatus(ChallengeStatus.COMPLETED);
+                    c.setCompletedAt(Instant.now());
+                });
     }
 
     private Payment requirePaid(String userId, CreateRequest request) {

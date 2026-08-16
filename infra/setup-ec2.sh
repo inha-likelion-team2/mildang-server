@@ -92,6 +92,7 @@ Environment=DB_PASSWORD=${DB_PASSWORD}
 Environment=JWT_SECRET=${JWT_SECRET}
 Environment=AI_BASE_URL=http://localhost:8000
 Environment=AI_FAKE=false
+Environment=PUBLIC_BASE_URL=https://${DOMAIN}
 ExecStart=/usr/bin/java -Xmx350m -jar /opt/mildang/mildang-server.jar
 Restart=always
 RestartSec=5
@@ -100,10 +101,34 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-echo "== 7. Caddy — 자동 HTTPS 리버스 프록시 =="
+echo "== 7. Caddy — 자동 HTTPS 리버스 프록시 + 접근 제한 =="
+# ⚠ 우리는 demo 프로필로 배포한다 = idToken 문자열이 곧 계정 키다.
+# 주소만 알면 누구나 심사위원 계정 토큰을 받고 /demo/reset 으로 데이터를 지울 수 있으므로
+# 사이트 전체를 basic auth 뒤에 둔다. 심사위원에게 아이디/비번을 함께 전달할 것.
+# 해시 생성: caddy hash-password --plaintext '원하는비번'
+SITE_USER="${SITE_USER:-judge}"
+SITE_PASSWORD_HASH="${SITE_PASSWORD_HASH:-}"
+if [ -z "${SITE_PASSWORD_HASH}" ]; then
+  echo "!! SITE_PASSWORD_HASH가 비어 있습니다."
+  echo "   caddy hash-password --plaintext '비번' 으로 해시를 만든 뒤 환경변수로 넣고 다시 실행하세요."
+  echo "   예: SITE_USER=judge SITE_PASSWORD_HASH='\$2a\$14\$...' sudo -E bash setup-ec2.sh"
+  exit 1
+fi
+
 cat > /etc/caddy/Caddyfile <<EOF
 ${DOMAIN} {
-    reverse_proxy localhost:8080
+    # 헬스체크만 열어둔다 — 배포 스크립트와 외부 모니터링이 인증 없이 확인해야 한다
+    @health path /v1/health
+    handle @health {
+        reverse_proxy localhost:8080
+    }
+
+    handle {
+        basic_auth {
+            ${SITE_USER} ${SITE_PASSWORD_HASH}
+        }
+        reverse_proxy localhost:8080
+    }
 }
 EOF
 
@@ -115,4 +140,8 @@ systemctl restart caddy
 echo ""
 echo "== 완료 =="
 echo "다음 단계: 로컬에서 infra/deploy-backend.ps1 로 jar를 올리면 서버가 뜹니다."
-echo "확인: https://${DOMAIN}/v1/health"
+echo "확인: https://${DOMAIN}/v1/health   (헬스체크만 인증 없이 열려 있습니다)"
+echo ""
+echo "!! 앱 접속에는 basic auth가 걸려 있습니다 — 아이디 '${SITE_USER}' + 설정한 비번."
+echo "!! 심사위원에게 주소와 함께 이 계정을 전달하세요."
+echo "!! 이 서버는 demo 프로필로 돕니다 (카카오 검증 없음·목 결제·/demo/* 활성)."

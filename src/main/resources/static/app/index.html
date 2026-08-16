@@ -471,10 +471,11 @@
     <h4>로그인</h4>
     <div class="row"><input id="dev-id" value="demo-user-1" placeholder="idToken">
       <button class="chip" onclick="login($('dev-id').value)">로그인</button></div>
-    <div class="row" style="margin-top:6px">
-      <button class="chip" onclick="login('demo-judge-02')">judge-02</button>
-      <button class="chip" onclick="login('demo-judge-03')">judge-03</button>
-      <button class="chip" onclick="login('demo-judge-05')">judge-05</button>
+    <div style="font-size:10.5px;color:rgba(0,0,0,.45);margin:6px 0 3px">심사위원 계정 — 로그인 + 시연 상태 세팅까지 한 번에</div>
+    <div class="row">
+      <button class="chip" onclick="login('demo-judge-02','DAY4_ACTIVE')">judge-02 · 4일차</button>
+      <button class="chip" onclick="login('demo-judge-03','COMPLETED')">judge-03 · 완주</button>
+      <button class="chip" onclick="login('demo-judge-05','W2_DAY8')">judge-05 · W2</button>
     </div>
     <h4>시드</h4>
     <div class="row">
@@ -504,7 +505,7 @@
 const BASE = '/v1';
 const $ = id => document.getElementById(id);
 const CONF = { CERTAIN: '확실', HIGH: '높음', MEDIUM: '보통' };
-let token = null, challengeId = null, challenge = null, budget = null;
+let token = null, refreshToken = null, challengeId = null, challenge = null, budget = null;
 let currentPeriod = null, currentPrice = 0, planData = null, selectedPlan = null;
 let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3' };
 let selectedWeekday = 'FRI', sheetCtx = null, scanId = null, scanData = null;
@@ -523,7 +524,7 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), 3800);
 }
 
-async function call(method, path, body, isForm) {
+async function call(method, path, body, isForm, retried) {
   const opts = { method, headers: {} };
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
   if (body && !isForm) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
@@ -532,10 +533,32 @@ async function call(method, path, body, isForm) {
   let data = null;
   try { data = await res.json(); } catch (e) {}
   if (!res.ok) {
+    // access 토큰은 30분이라 시연 대기 중에 만료된다. 조용히 갱신하고 한 번만 다시 시도.
+    if (res.status === 401 && refreshToken && !retried && path !== '/auth/refresh') {
+      if (await tryRefresh()) return call(method, path, body, isForm, true);
+    }
+    // 챌린지가 방금 끝났으면(마지막 날 경계) 화면을 다시 라우팅해 완주 안내로 넘긴다
+    if (res.status === 404 && data && data.error && data.error.message
+        && data.error.message.indexOf('진행 중인 챌린지가 없어요') === 0) {
+      route();
+      throw { status: res.status, data };
+    }
     if (data && data.error && data.error.message) toast(data.error.message);
     throw { status: res.status, data };
   }
   return data;
+}
+async function tryRefresh() {
+  try {
+    const r = await fetch(BASE + '/auth/refresh', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken })
+    });
+    if (!r.ok) return false;
+    const d = await r.json();
+    token = d.accessToken; refreshToken = d.refreshToken;
+    return true;
+  } catch (e) { return false; }
 }
 
 function nav(s) {
@@ -553,12 +576,14 @@ function nav(s) {
 // ---------- 인증 · 데모 ----------
 let userKey = null; // 마지막 챌린지 ID 보관 — 완주 후 current 404여도 리포트 진입 (실 FE도 동일 패턴 필요)
 function saveLast(id) { challengeId = id; if (userKey && id) localStorage.setItem(userKey, id); }
-async function login(idToken) {
+async function login(idToken, seedScenario) {
   const r = await call('POST', '/auth/social', { provider: 'KAKAO', idToken, deviceId: 'app-' + idToken });
-  token = r.accessToken;
+  token = r.accessToken; refreshToken = r.refreshToken;
   userKey = 'mildang.last.' + (r.user.id || idToken);
   $('dev-who').textContent = r.user.nickname;
   $('dev').classList.remove('on');
+  // 심사위원 계정은 로그인만으로는 빈 상태다 — 시연 상태까지 한 번에 맞춘다
+  if (seedScenario) { await seed(seedScenario); return; }
   await route();
 }
 async function route() {

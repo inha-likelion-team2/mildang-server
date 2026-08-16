@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-16 (2) | **배포 전 감사 반영** — ① 흥정 `close`는 확정된 항목에 합의를 반영하지 않는다 ② `POST /challenges`가 온보딩 중 챌린지를 이어서 반환 ③ 리포트 `TOTAL_SPENT`에 선차감 포함·`VS_BUDGET`이 대시보드 잔액과 같은 부호 ④ share-card `mocked`는 demo에서만·딥링크가 배포 도메인 ⑤ 선차감 전환분이 약속 요일에 귀속 ⑥ `/health`가 DB 확인 ⑦ 스캔 가격 수정 후 재담기 시 수정값 반영 |
 | 2026-08-16 | `POST /items` **중복 제출 병합** 추가 — 같은 메뉴·같은 값의 확정 전 항목이 3초 안에 또 들어오면 기존 항목 반환 (이슈 #1 추가 피드백: IME Enter 이중 발생) |
 | 2026-08-15 | **문서 신설** — 코드 전수 조사 기준으로 재작성. 이슈 #1 대응분 반영: `current.today` 신설 · `scans.menus[].item` 신설 · `item.source.scanId/menuId` 노출 · `POST /items` 스캔 항목 재사용 규칙 · 읽을 수 없는 본문 400 |
 
@@ -113,7 +114,6 @@
 
 `local`·`demo` 프로필에서 목으로 처리된 응답에만 최상위에 `"mocked": true`가 붙습니다 — `POST /auth/social` · `POST /auth/refresh` · `POST /payments/checkout` · `POST /.../share-card` · `/demo/*`. prod에서는 필드가 사라집니다.
 
-> ⚠ 알려진 불일치: **share-card는 prod에서도 `mocked: true`가 붙습니다** (하드코딩). 실서비스 전환 시 정리 예정.
 
 ---
 
@@ -451,7 +451,7 @@
 > **덕분에 "밀당하기 → 기록하기" 사이에 항목 id를 들고 있지 않아도 됩니다.**
 
 > **중복 제출 병합 (2026-08-16 신설)**
-> 소스와 무관하게, **같은 메뉴·같은 값·같은 종류(+약속은 같은 요일)의 확정 전 항목이 3초 안에 이미 만들어졌으면 새로 만들지 않고 그 항목을 반환**합니다.
+> **직접 입력·프리셋 소스에 한해**, 같은 메뉴·같은 값·같은 종류(+약속은 같은 요일)의 확정 전 항목이 3초 안에 이미 만들어졌으면 새로 만들지 않고 그 항목을 반환합니다. (스캔은 위 (a) 규칙이 정확히 처리하므로 제외 — 메뉴판에 같은 이름이 두 줄 있어도 서로 다른 칸으로 취급합니다.)
 > 더블 탭이나 **한글 IME의 Enter 이중 발생**(조합 중 Enter는 `keydown`이 두 번 뜹니다)으로 같은 항목이 두 개 생기던 것을 막습니다. 분석을 두 번 해서 `analysisId`가 서로 달라도 병합됩니다.
 > 3초가 지나면 정상적으로 새 항목이 만들어집니다 — 하루에 같은 메뉴를 두 번 먹는 건 막지 않습니다.
 > ⚠ 이건 **안전망이지 대체재가 아닙니다.** 프론트에도 중복 제출 가드를 넣어주세요 (§12 체크리스트).
@@ -842,6 +842,8 @@
 | `challenge.label` | **"완주" 문구 포함**. 중복 표기 주의 |
 | `stats` | **항상 3개** — `TOTAL_SPENT` · `VS_BUDGET` · `PEAK_SLOT` 순서 고정 |
 | `stats[].value` | **문자열**입니다. `VS_BUDGET`은 양수면 `+`가 붙고 음수는 그대로. 데이터가 없으면 `PEAK_SLOT`은 `"—"` |
+| `stats[0]` `TOTAL_SPENT` | **선차감(`prepaid`) 포함** — 예산에서 빠져나간 총액 |
+| `stats[1]` `VS_BUDGET` | **남은 예산** = 대시보드 `budget.balance`와 같은 값·같은 부호. 음수면 초과 |
 | `finding.available` | `false`면 `headline`·`metric`·`sampleNote`가 전부 `null`로 옵니다. **발견 영역만 숨기고 나머지는 정상 표시** — 리포트는 항상 생성됩니다 |
 | `finding.metric.thresholdPoints` | 항상 **40** |
 | `finding.sampleNote` | 항상 동반해서 보여주세요 (N=1 데이터라서) |
@@ -860,9 +862,9 @@
 - `format`은 현재 사용되지 않습니다.
 
 ```json
-// 응답 201 — 실제 응답 키는 이 6개가 전부입니다
+// 응답 201 — 실제 응답 키는 이 6개가 전부입니다 (prod에서는 mocked가 빠져 5개)
 { "mocked": true, "width": 1080, "height": 1920,
-  "deepLink": "https://mildang.app/c/ABC123",
+  "deepLink": "https://<배포도메인>/c/ABC123",
   "hashtag": "#밀가루흥정챌린지",
   "expiresAt": "2026-09-14T..." }
 ```
@@ -888,8 +890,10 @@
 ### `GET /health` → 200 (인증 불필요)
 
 ```json
-{ "status": "ok" }
+{ "status": "ok", "db": "ok" }
 ```
+
+**DB 연결까지 실제로 확인합니다.** DB에 닿지 못하면 **503** `{"status":"down","db":"unreachable"}`입니다.
 
 ### 데모 전용 (`/demo/*`) — `local`·`demo` 프로필에서만, prod는 404
 

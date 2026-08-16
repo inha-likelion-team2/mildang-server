@@ -32,10 +32,18 @@ public class FakeAiGateway implements AiGateway {
             Map.entry("제육볶음", new Known("1인분", 15, 5, Confidence.MEDIUM, "시판 고추장 베이스로 추정")),
             Map.entry("냉면", new Known("1그릇", 40, 10, Confidence.MEDIUM, "면에 밀가루 혼합 — 비율은 가게마다")));
 
-    private static final List<Candidate> FALLBACK_CANDIDATES = List.of(
-            new Candidate("칼국수", 80, 0, Confidence.CERTAIN),
-            new Candidate("수제비", 75, 10, Confidence.HIGH),
-            new Candidate("우동", 70, 10, Confidence.HIGH));
+    /**
+     * 후보는 반드시 KNOWN 안에서 고른다 — 후보 칩을 눌렀는데 또 "잘 모르겠어요"가 뜨면
+     * 사용자가 항목을 만들 방법이 없다. KNOWN에서 값을 그대로 가져오므로 칩에 보인 가격과
+     * 실제 생성되는 항목의 가격도 어긋나지 않는다.
+     */
+    private static final List<Candidate> FALLBACK_CANDIDATES =
+            java.util.stream.Stream.of("칼국수", "떡볶이", "김밥")
+                    .map(name -> {
+                        Known k = KNOWN.get(name);
+                        return new Candidate(name, k.points(), k.pm(), k.confidence());
+                    })
+                    .toList();
 
     @Override
     public List<Estimate> estimateText(EstimateRequest request) {

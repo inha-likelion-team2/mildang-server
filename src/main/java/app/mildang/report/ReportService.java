@@ -66,10 +66,13 @@ public class ReportService {
     private final UserRepository userRepository;
     private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
+    private final boolean demoEnabled;
+    private final String publicBaseUrl;
 
     public ReportService(ReportRepository reportRepository, ChallengeRepository challengeRepository,
                          ItemRepository itemRepository, CheckinRepository checkinRepository,
-                         UserRepository userRepository, AiGateway aiGateway, ObjectMapper objectMapper) {
+                         UserRepository userRepository, AiGateway aiGateway, ObjectMapper objectMapper,
+                         app.mildang.common.config.MildangProps props) {
         this.reportRepository = reportRepository;
         this.challengeRepository = challengeRepository;
         this.itemRepository = itemRepository;
@@ -77,6 +80,8 @@ public class ReportService {
         this.userRepository = userRepository;
         this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
+        this.demoEnabled = props.demo().enabled();
+        this.publicBaseUrl = props.publicBaseUrl();
     }
 
     @Transactional
@@ -98,8 +103,10 @@ public class ReportService {
         report.setCardMentionsJson(objectMapper.writeValueAsString(mentions));
         report.setCardExpiresAt(Instant.now().plus(Duration.ofDays(30)));
 
-        return new ShareCardResponse(Boolean.TRUE, report.getCardImageUrl(), 1080, 1920,
-                "https://mildang.app/c/" + report.getInviteCode(), "#밀가루흥정챌린지",
+        // mocked는 실제로 목일 때만 (다른 응답과 규칙을 맞춘다). 딥링크는 배포 도메인에서 온다 —
+        // 하드코딩하면 공유 링크가 우리 서버가 아닌 곳을 가리켜 404가 난다.
+        return new ShareCardResponse(demoEnabled ? Boolean.TRUE : null, report.getCardImageUrl(), 1080, 1920,
+                publicBaseUrl + "/c/" + report.getInviteCode(), "#밀가루흥정챌린지",
                 report.getCardExpiresAt());
     }
 
@@ -140,20 +147,25 @@ public class ReportService {
         Report report = new Report();
         report.setChallengeId(challenge.getId());
         report.setTitle("당신의 몸이 쓴 리포트");
-        report.setTotalSpent(challenge.getSpent());
+        // 선차감도 예산에서 이미 빠져나간 돈이다. 빼먹으면 대시보드에서 150을 쓴 사용자가
+        // 리포트에서는 「총 소비 80」을 보게 된다 — 같은 사실이 두 화면에서 다르게 보인다.
+        int consumed = challenge.getSpent() + challenge.getPrepaid();
+        report.setTotalSpent(consumed);
         report.setAnsweredDays(checkins.size());
         report.setTotalDays(challenge.getTotalDays());
 
-        // stats — VS_BUDGET = spent − total, 양수에만 + (§9.1)
-        int vs = challenge.getSpent() - challenge.getBudget();
+        // VS_BUDGET = 남은 예산(대시보드 balance와 같은 값·같은 부호). 음수면 초과.
+        int vs = challenge.getBudget() - consumed;
         List<Stat> stats = List.of(
-                new Stat("TOTAL_SPENT", "총 소비", String.valueOf(challenge.getSpent()), "/" + challenge.getBudget()),
+                new Stat("TOTAL_SPENT", "총 소비", String.valueOf(consumed), "/" + challenge.getBudget()),
                 new Stat("VS_BUDGET", "예산 대비", vs > 0 ? "+" + vs : String.valueOf(vs), null),
                 new Stat("PEAK_SLOT", "최다 소비", peakSlot(recorded), null));
         report.setStatsJson(objectMapper.writeValueAsString(stats));
 
-        // haggleHighlight
-        List<Item> haggled = recorded.stream().filter(Item::isHaggled).toList();
+        // haggleHighlight — 선차감한 약속의 절감도 사용자가 실제로 아낀 것이다
+        List<Item> settled = itemRepository.findByChallengeIdAndStatusInOrderByCreatedAtDesc(
+                challenge.getId(), List.of(ItemStatus.RECORDED, ItemStatus.PREPAID));
+        List<Item> haggled = settled.stream().filter(Item::isHaggled).toList();
         int totalSaved = haggled.stream().mapToInt(i -> i.getOriginalPoints() - i.getAdjustedPoints()).sum();
         report.setHaggleTotalSaved(totalSaved);
         haggled.stream()

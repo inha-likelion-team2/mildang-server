@@ -13,6 +13,8 @@ server:
     context-path: /v1
 
 mildang:
+  # 공유 딥링크에 찍히는 주소 — 배포 시 실제 도메인으로 반드시 덮어쓸 것
+  public-base-url: ${PUBLIC_BASE_URL:http://localhost:8080}
   demo:
     enabled: true
   jwt:
@@ -22,6 +24,9 @@ mildang:
   ai:
     base-url: ${AI_BASE_URL:http://localhost:8000}
     fake: ${AI_FAKE:false}
+    # AI가 멈추면 요청 스레드 + DB 커넥션을 붙잡는다 — 반드시 상한을 둔다 (스캔이 20초대라 read는 여유 있게)
+    connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${AI_READ_TIMEOUT:30s}
 
 ---
 spring:

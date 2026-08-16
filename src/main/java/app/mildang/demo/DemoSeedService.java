@@ -67,8 +67,13 @@ public class DemoSeedService {
         paymentRepository.deleteAll(paymentRepository.findByUserId(userId));
     }
 
+    /**
+     * runningBalance·runningPrepaid가 인스턴스 필드라 동시에 시드하면 서로의 잔액 스냅샷을 덮어쓴다
+     * (심사위원 둘이 같은 순간에 시드 버튼을 누르는 상황). 데모 전용이고 호출 빈도가 낮아
+     * 직렬화로 막는다 — 필드를 지역변수로 빼는 리팩터링은 실서비스 전에.
+     */
     @Transactional
-    public Challenge seed(String userId, String scenario) {
+    public synchronized Challenge seed(String userId, String scenario) {
         reset(userId);
         return switch (scenario) {
             case "FRESH" -> null;

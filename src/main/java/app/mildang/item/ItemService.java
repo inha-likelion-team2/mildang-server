@@ -79,10 +79,14 @@ public class ItemService {
         }
 
         // 스캔 메뉴 한 칸 = 살아있는 항목 하나. 이미 있으면 그걸 돌려준다 — 밀당한 항목을 두고
-        // 원래값짜리 새 항목이 생겨 흥정 결과가 사라지던 문제(이슈 #1)
-        if (request.scanId() != null && request.menuId() != null) {
-            Item existing = findLiveScanItem(challenge, request.scanId(), request.menuId());
-            if (existing != null && existing.getKind() == request.kind()) {
+        // 원래값짜리 새 항목이 생겨 흥정 결과가 사라지던 문제(이슈 #1).
+        // 단, 그 사이 가격을 고쳤다면(edited) 고친 값을 쓰려는 의도이므로 재사용하지 않는다.
+        boolean fromScan = request.scanId() != null && request.menuId() != null;
+        if (fromScan) {
+            app.mildang.scan.ScanMenu menu = scanService.requireMenu(userId, request.scanId(), request.menuId());
+            Item existing = findLiveScanItem(challenge, menu);
+            if (existing != null && existing.getKind() == request.kind()
+                    && existing.getOriginalPoints() == menu.getPoints()) {
                 return view(existing, challenge);
             }
         }
@@ -145,9 +149,13 @@ public class ItemService {
         // 미확정 항목이 방금 만들어졌으면 새로 만들지 않고 그걸 돌려준다. 클라 가드가 빠진
         // 클라이언트도 보호된다. 사용자가 몇 초 안에 같은 메뉴를 두 번 담으려면 시트를 닫고
         // 다시 열어 또 입력해야 하므로 오탐은 사실상 없다.
-        Item justCreated = findRecentDuplicate(challenge, item, now);
-        if (justCreated != null) {
-            return view(justCreated, challenge);
+        // 스캔은 제외한다 — 메뉴판에 같은 이름·같은 값이 두 줄 있으면 서로 다른 칸인데도 병합돼
+        // 두 번째 줄이 계속 비어 보인다. 그쪽은 위의 (scanId, menuNo) 규칙이 이미 정확히 처리한다.
+        if (!fromScan) {
+            Item justCreated = findRecentDuplicate(challenge, item, now);
+            if (justCreated != null) {
+                return view(justCreated, challenge);
+            }
         }
 
         itemRepository.save(item);
@@ -303,9 +311,8 @@ public class ItemService {
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
     }
 
-    /** 해당 스캔 메뉴로 만들어져 아직 확정되지 않은 항목 (없으면 null) — 소유 검증은 requireMenu가 한다 */
-    private Item findLiveScanItem(Challenge challenge, String scanId, String menuId) {
-        app.mildang.scan.ScanMenu menu = scanService.requireMenu(challenge.getUserId(), scanId, menuId);
+    /** 해당 스캔 메뉴로 만들어져 아직 확정되지 않은 항목 (없으면 null) */
+    private Item findLiveScanItem(Challenge challenge, app.mildang.scan.ScanMenu menu) {
         return itemRepository
                 .findFirstByChallengeIdAndSourceScanIdAndSourceMenuNoAndStatusInOrderByCreatedAtDesc(
                         challenge.getId(), menu.getScanId(), menu.getMenuNo(), LIVE)

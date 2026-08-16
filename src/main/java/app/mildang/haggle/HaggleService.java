@@ -185,27 +185,48 @@ public class HaggleService {
         Item item = itemRepository.findById(session.getItemId())
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND));
 
+        // 세션은 항목의 종착 전이보다 오래 살 수 있다 — 대화창을 열어둔 채 목록에서 기록·선차감·삭제가
+        // 가능하다. 가드가 없으면 RECORDED 항목이 HAGGLED로 되살아나 두 번 차감된다(이중 차감).
+        boolean applied = false;
         if ("OPEN".equals(session.getStatus())) {
             session.setStatus("CLOSED");
             session.setClosedAt(Instant.now());
-            if (session.getAgreedPoints() != null) {
+            if (session.getAgreedPoints() != null && item.getStatus().isLive()) {
                 item.setAdjustedLabel(session.getAgreedLabel());
                 item.setAdjustedPoints(session.getAgreedPoints());
                 item.setAdjustedBasis(session.getAgreedBasis());
                 item.setAdjustedHaggleId(session.getId());
                 item.setAdjustedTurns(session.getTurn());
                 item.setStatus(ItemStatus.HAGGLED);
+                applied = true;
             }
         }
 
-        String farewell = session.getAgreedPoints() == null
-                ? "그대로 두셨네요. 항목은 원래값 그대로예요 — 기록은 목록에서 «기록하기»로 해주세요."
-                : "거래 종료. " + item.getOriginalName() + " " + session.getAgreedLabel() + " "
-                        + session.getAgreedPoints() + "으로 항목을 고쳐뒀습니다. 아직 예산은 안 건드렸어요.";
+        String farewell = farewell(session, item, applied);
 
         return new CloseResponse(
                 new CloseHaggleView(session.getId(), session.getStatus(), session.getTurn(), session.getClosedAt()),
                 itemService.viewOf(item, challenge), farewell);
+    }
+
+    /**
+     * 종료 인사 — 항목의 실제 상태와 어긋나지 않게 만든다.
+     * 합의가 있어도 이미 확정된 항목엔 반영하지 않으므로 그 사실을 그대로 알린다(판정·질책 없이).
+     */
+    private static String farewell(HaggleSession session, Item item, boolean applied) {
+        if (applied) {
+            return "거래 종료. " + item.getOriginalName() + " " + session.getAgreedLabel() + " "
+                    + session.getAgreedPoints() + "으로 항목을 고쳐뒀습니다. 아직 예산은 안 건드렸어요.";
+        }
+        if (session.getAgreedPoints() != null) {
+            // 합의는 했지만 항목이 이미 기록·선차감·취소된 뒤였다
+            return "이 항목은 이미 정리된 뒤라 이번 합의는 반영하지 않았어요. 다음 끼니에서 다시 만나요.";
+        }
+        if (item.isHaggled()) {
+            // 재흥정을 새 합의 없이 닫았다 — 직전 합의값이 그대로 남아 있다
+            return "그대로 두셨네요. 항목은 지난 합의 그대로 " + item.getAdjustedPoints() + "이에요.";
+        }
+        return "그대로 두셨네요. 항목은 원래값 그대로예요 — 기록은 목록에서 «기록하기»로 해주세요.";
     }
 
     /** ✕ 변경 없이 나가기 — ABANDONED, 항목 원래값 유지 (§7.4) */

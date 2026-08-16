@@ -94,6 +94,9 @@ public class BatchJobs {
                 int effective = item.effectivePoints();
                 item.setStatus(ItemStatus.RECORDED);
                 item.setRecordedAt(now);
+                // 약속을 먹은 날은 «약속 요일»이다. 생성일(약속을 잡은 날)로 두면 대시보드의
+                // 「오늘 먹은 것」에도, 리포트의 그날 섭취량에도 안 잡혀 흔적 없이 사라진다.
+                item.setLogicalDate(target);
                 challengeRepository.findById(item.getChallengeId()).ifPresent(c -> {
                     c.setPrepaid(c.getPrepaid() - effective);
                     c.setSpent(c.getSpent() + effective);
