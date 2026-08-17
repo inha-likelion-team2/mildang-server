@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (6) | **기록 보기 화면** — `GET /items`에 `date` 필터 추가(주면 그날치만 + `day{date,count,totalPoints}`), 캘린더용 **`GET /items/dates` 신설**(그 달에 기록이 있는 날) |
 | 2026-08-17 (5) | **체중 기록 신설** — 컨디션 체크인에서 함께 받는다(`checkins/today`의 `weightKg`, 선택). — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
 | 2026-08-17 (4) | **`POST /scans/{id}/menus/{menuId}/comment` 신설** — 화면 4b에서 하단 메뉴를 탭하면 상단 메모가 그 메뉴로 바뀐다. 메뉴마다 코멘트를 따로 만든다 |
 | 2026-08-17 (3) | **설문 2문항 추가** — `survey.portion`(한 번 먹는 양, 예산에 0.7/1.0/1.3배) · `survey.situation`(가장 많이 먹는 상황, **예산엔 영향 없음** · AI용 저장). 둘 다 선택 |
@@ -454,21 +455,46 @@
 | `weekday` | `PROMISE`만 값이 있습니다 |
 | `expiresAt` | `MEAL`은 다음날 05:00 KST, `PROMISE`는 `null` |
 
-### `GET /items?kind=&status=&limit=` → 200
+### `GET /items?kind=&status=&limit=&date=` → 200
 
 | 파라미터 | 기본값 | 비고 |
 |---------|--------|------|
 | `kind` | 전체 | `MEAL`·`PROMISE` |
 | `status` | `PENDING,HAGGLED` | 콤마 구분 다중 지정. 잘못된 값이면 400 |
 | `limit` | 20 | 서버에서 **최대 50**으로 자름 |
+| `date` | 없음(전체 기간) | `2026-08-16`. **주면 그날 것만** — 화면 「기록 보기」용. 형식이 틀리면 400 |
 
 ```json
 { "items": [ /* 항목 객체 */ ],
-  "summary": { "count": 3, "totalPoints": 55, "balanceAfterAll": 170 } }
+  "summary": { "count": 3, "totalPoints": 55, "balanceAfterAll": 170 },
+  "day": { "date": "2026-08-16", "count": 2, "totalPoints": 125 }   // date를 줬을 때만
+}
 ```
 
-- ⚠ **`summary`는 쿼리 필터와 무관하게 미기록 전체(`PENDING`·`HAGGLED`·`EXPIRED`) 고정값**입니다. 필터를 걸어도 값이 안 바뀝니다.
-- 정렬은 `createdAt` 내림차순(최신 먼저)입니다.
+- ⚠ **`summary`는 쿼리 필터와 무관하게 미기록 전체(`PENDING`·`HAGGLED`·`EXPIRED`) 고정값**입니다. 필터를 걸어도 값이 안 바뀝니다. 화면 상단의 「총 5건」은 `summary`가 아니라 **`day`** 를 쓰세요.
+- **`day`는 `date`를 줬을 때만** 응답에 들어갑니다(안 주면 키 자체가 없음). `day.totalPoints`는 그날 항목들의 `effective.points` 합입니다.
+- 기록이 없는 날도 **200**입니다 — `items: []`, `day.count: 0` (404 아님).
+- 정렬: 기본은 `createdAt` 내림차순(최신 먼저). **`date`를 주면 `recordedAt` 오름차순**(먹은 순서)으로 바뀝니다 — 하루 안에서는 시간순이 자연스러워서입니다.
+- 날짜 기준은 **05:00 KST 경계**(`logicalDate`)입니다. 새벽 3시에 먹은 라면은 **전날** 목록에 들어갑니다.
+
+### `GET /items/dates?month=` → 200
+
+캘린더에서 **기록이 있는 날에 표시**를 하기 위한 목록입니다.
+
+| 파라미터 | 기본값 | 비고 |
+|---------|--------|------|
+| `month` | 이번 달 | `2026-08`. 형식이 틀리면 400 |
+
+```json
+{ "month": "2026-08",
+  "days": [ { "date": "2026-08-16", "count": 2, "totalPoints": 125 },
+            { "date": "2026-08-17", "count": 1, "totalPoints": 80 } ] }
+```
+
+- **기록이 있는 날만** 담깁니다 — 없는 날은 아예 안 들어옵니다(0으로 채워 보내지 않음). 캘린더는 이 목록에 있는 날짜에만 점을 찍으면 됩니다.
+- `RECORDED`만 셉니다. 확정 전(`PENDING`·`HAGGLED`)이나 만료는 «먹은 날»이 아니라서 제외합니다.
+- 날짜를 하나 고르면 `GET /items?date=...&status=RECORDED`로 그날 목록을 받으세요.
+- 범위는 **현재 진행 중인 챌린지**입니다 — 지난 챌린지 기록은 아직 조회 대상이 아닙니다(미정 Q4).
 
 ### `POST /items` → **201**
 

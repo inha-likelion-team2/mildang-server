@@ -178,22 +178,77 @@ public class ItemService {
     }
 
     @Transactional(readOnly = true)
-    public ListResponse list(String userId, ItemKind kind, String statusCsv, int limit) {
+    public ListResponse list(String userId, ItemKind kind, String statusCsv, int limit, String date) {
         Challenge challenge = challengeService.requireActive(userId);
         List<ItemStatus> statuses = parseStatuses(statusCsv);
+
+        // 날짜를 주면 그날치만 — 화면 «기록 보기»(오늘 2026.08.16 · 총 5건)와 캘린더 조회 공용.
+        // 정렬도 달라진다: 그날 안에서는 먹은 순서(recordedAt)가 자연스럽다
+        if (date != null && !date.isBlank()) {
+            LocalDate day = parseDate(date);
+            List<Item> ofDay = itemRepository
+                    .findByChallengeIdAndLogicalDateAndStatusInOrderByRecordedAtAsc(
+                            challenge.getId(), day, statuses)
+                    .stream()
+                    .filter(i -> kind == null || i.getKind() == kind)
+                    .limit(Math.min(limit, 50)).toList();
+            return new ListResponse(
+                    ofDay.stream().map(i -> view(i, challenge)).toList(),
+                    unrecordedSummary(challenge),
+                    new ItemDtos.DayView(day.toString(), ofDay.size(),
+                            ofDay.stream().mapToInt(Item::effectivePoints).sum()));
+        }
+
         List<Item> items = (kind == null
                 ? itemRepository.findByChallengeIdAndStatusInOrderByCreatedAtDesc(challenge.getId(), statuses)
                 : itemRepository.findByChallengeIdAndKindAndStatusInOrderByCreatedAtDesc(
                         challenge.getId(), kind, statuses))
                 .stream().limit(Math.min(limit, 50)).toList();
 
-        // v1.3 §6.2: summary는 쿼리 필터와 무관하게 미기록(PENDING·HAGGLED·EXPIRED) 전체를 집계 — 고정값
+        return new ListResponse(
+                items.stream().map(i -> view(i, challenge)).toList(),
+                unrecordedSummary(challenge), null);
+    }
+
+    /** v1.3 §6.2: summary는 쿼리 필터와 무관하게 미기록(PENDING·HAGGLED·EXPIRED) 전체 — 고정값 */
+    private Summary unrecordedSummary(Challenge challenge) {
         List<Item> unrecorded = itemRepository
                 .findByChallengeIdAndStatusInOrderByCreatedAtDesc(challenge.getId(), UNRECORDED);
         int total = unrecorded.stream().mapToInt(Item::effectivePoints).sum();
-        return new ListResponse(
-                items.stream().map(i -> view(i, challenge)).toList(),
-                new Summary(unrecorded.size(), total, challenge.getBalance() - total));
+        return new Summary(unrecorded.size(), total, challenge.getBalance() - total);
+    }
+
+    /** 캘린더 — 그 달에 «기록이 있는 날»만 (없는 날은 아예 안 담는다) */
+    @Transactional(readOnly = true)
+    public ItemDtos.RecordedDaysResponse recordedDays(String userId, String month) {
+        Challenge challenge = challengeService.requireActive(userId);
+        java.time.YearMonth ym;
+        try {
+            ym = month == null || month.isBlank()
+                    ? java.time.YearMonth.from(LogicalDate.of(Instant.now()))
+                    : java.time.YearMonth.parse(month);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "month는 2026-08 형식으로 보내주세요.", "month", null);
+        }
+        List<ItemDtos.DayView> days = itemRepository
+                .findByChallengeIdAndLogicalDateBetweenAndStatusInOrderByLogicalDateAsc(
+                        challenge.getId(), ym.atDay(1), ym.atEndOfMonth(), List.of(ItemStatus.RECORDED))
+                .stream()
+                .collect(java.util.stream.Collectors.groupingBy(Item::getLogicalDate,
+                        java.util.TreeMap::new, java.util.stream.Collectors.toList()))
+                .entrySet().stream()
+                .map(e -> new ItemDtos.DayView(e.getKey().toString(), e.getValue().size(),
+                        e.getValue().stream().mapToInt(Item::effectivePoints).sum()))
+                .toList();
+        return new ItemDtos.RecordedDaysResponse(ym.toString(), days);
+    }
+
+    private static LocalDate parseDate(String date) {
+        try {
+            return LocalDate.parse(date);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED, "date는 2026-08-16 형식으로 보내주세요.", "date", null);
+        }
     }
 
     private static List<ItemStatus> parseStatuses(String csv) {

@@ -36,8 +36,16 @@ public class ItemController {
     public ListResponse list(@CurrentUser String userId,
                              @RequestParam(required = false) ItemKind kind,
                              @RequestParam(required = false) String status,
-                             @RequestParam(defaultValue = "20") int limit) {
-        return itemService.list(userId, kind, status, limit);
+                             @RequestParam(defaultValue = "20") int limit,
+                             @RequestParam(required = false) String date) {
+        return itemService.list(userId, kind, status, limit, date);
+    }
+
+    /** 캘린더 — 그 달에 기록이 있는 날 (화면 «기록 보기»의 날짜 선택) */
+    @GetMapping("/items/dates")
+    public ItemDtos.RecordedDaysResponse recordedDays(@CurrentUser String userId,
+                                                      @RequestParam(required = false) String month) {
+        return itemService.recordedDays(userId, month);
     }
 
     @PostMapping("/items")

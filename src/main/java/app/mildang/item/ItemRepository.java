@@ -23,7 +23,11 @@ public interface ItemRepository extends JpaRepository<Item, String> {
     Optional<Item> findFirstByChallengeIdAndSourceScanIdAndSourceMenuNoAndStatusInOrderByCreatedAtDesc(
             String challengeId, String sourceScanId, Integer sourceMenuNo, List<ItemStatus> statuses);
 
-    /** 그날 먹은 것 — 대시보드 today 블록 */
+    /** 그날 먹은 것 — 대시보드 today 블록, 날짜 필터 조회 공용 */
     List<Item> findByChallengeIdAndLogicalDateAndStatusInOrderByRecordedAtAsc(
             String challengeId, LocalDate logicalDate, List<ItemStatus> statuses);
+
+    /** 캘린더 — 그 달에 기록이 있는 날을 표시하려면 범위로 한 번에 가져와야 한다 */
+    List<Item> findByChallengeIdAndLogicalDateBetweenAndStatusInOrderByLogicalDateAsc(
+            String challengeId, LocalDate from, LocalDate to, List<ItemStatus> statuses);
 }

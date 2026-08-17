@@ -36,7 +36,17 @@ public class ItemDtos {
                            Instant expiresAt, Instant recordedAt) {
     }
 
-    public record ListResponse(List<ItemView> items, Summary summary) {
+    /** date 필터를 준 조회에만 day가 채워진다 (그날의 건수·합계). summary는 기존 의미 그대로 */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record ListResponse(List<ItemView> items, Summary summary, DayView day) {
+    }
+
+    /** 화면 «기록 보기»의 「오늘 2026.08.16 · 총 5건」 */
+    public record DayView(String date, int count, int totalPoints) {
+    }
+
+    /** 캘린더에 표시할 «기록이 있는 날» 목록 */
+    public record RecordedDaysResponse(String month, List<DayView> days) {
     }
 
     public record Summary(int count, int totalPoints, int balanceAfterAll) {
