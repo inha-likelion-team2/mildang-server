@@ -35,3 +35,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+# 로컬 서버 로그
+bootrun.log
