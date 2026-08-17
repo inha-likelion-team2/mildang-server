@@ -21,8 +21,13 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String public
 
     /**
      * 카카오 OIDC — prod에서 id_token을 검증할 때 쓴다.
-     * appKey는 토큰의 aud와 대조할 값(카카오 앱의 REST API 키)이라 <b>반드시 주입</b>해야 한다.
-     * 비어 있으면 «아무 문자열이나 계정이 되는» 상태가 되므로 prod 기동 시 즉시 실패시킨다.
+     *
+     * <p>appKey는 토큰의 {@code aud}와 대조할 값이라 <b>반드시 주입</b>해야 한다. 비어 있으면
+     * «아무 문자열이나 계정이 되는» 상태가 되므로 prod 기동 시 즉시 실패시킨다.
+     *
+     * <p><b>콤마로 여러 개를 넣을 수 있다.</b> 카카오는 로그인 방식에 따라 {@code aud}에 들어가는 키가
+     * 다르다 — JS SDK면 JavaScript 키, 서버가 인가 코드를 교환하면 REST API 키. 프론트 구현이
+     * 바뀌거나 웹·앱을 같이 내면 하나만 넣어둔 쪽은 전 로그인이 막힌다.
      */
     public record Kakao(String appKey, String issuer, String jwksUri, Duration timeout) {
 
@@ -30,6 +35,16 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String public
             issuer = issuer != null ? issuer : "https://kauth.kakao.com";
             jwksUri = jwksUri != null ? jwksUri : "https://kauth.kakao.com/.well-known/jwks.json";
             timeout = timeout != null ? timeout : Duration.ofSeconds(3);
+        }
+
+        /** aud로 인정할 앱 키들 — 하나라도 맞으면 우리 토큰이다 */
+        public java.util.Set<String> audiences() {
+            if (appKey == null || appKey.isBlank()) {
+                return java.util.Set.of();
+            }
+            return java.util.Arrays.stream(appKey.split(","))
+                    .map(String::trim).filter(key -> !key.isEmpty())
+                    .collect(java.util.stream.Collectors.toUnmodifiableSet());
         }
     }
 

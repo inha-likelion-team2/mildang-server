@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (13) | **`KAKAO_APP_KEY`에 앱 키를 콤마로 여러 개** 넣을 수 있다 — 웹은 로그인 방식에 따라 `id_token.aud`가 JavaScript 키/REST API 키로 갈린다. 하나라도 맞으면 통과 (계약 무변경, 설정만) |
 | 2026-08-17 (12) | **확정 세트 렌더 대조 반영** — ① `POST /challenges/{id}/budget`에 **`weightKg`**(설문의 「체중은 어떻게 되나요?」, 선택) ② `POST /items`의 약속을 **날짜(`promiseDate`)로** 받는다(기존 `weekday`도 계속 동작) ③ `GET /analyses/recent`가 **값까지, 4개** |
 | 2026-08-17 (11) | **「자주 먹는 것」 이력 집계(§6.7) 구현** — `GET /presets`가 최근 4주 기록을 빈도순으로 주고 `source`가 `HISTORY`가 된다. 이력 칩의 `id`는 `pst_hist_{itemId}`. **AI 게이트에 기준 수량 확인(§8 #12) 추가** — `unit`·`basis` 중 어디에도 수량 표현이 없으면 재분석 |
 | 2026-08-17 (10) | **`budget.mealsLeft` 신설** — 화면 「잔액 52 ・앞으로 4끼」. `progress.days[]`에 `weighed` 추가(진행률 카드가 일차별 체중을 같이 그린다) |

@@ -181,6 +181,26 @@ class ProdKakaoVerifierTest {
     }
 
     @Test
+    @DisplayName("★ 앱 키를 여러 개 넣으면 어느 쪽으로 로그인해도 통과한다")
+    void acceptsAnyConfiguredAppKey() {
+        // 웹은 로그인 방식에 따라 aud가 갈린다 — JS SDK면 JavaScript 키, 서버 교환이면 REST API 키
+        MildangProps.Kakao twoKeys = new MildangProps.Kakao(
+                "javascript-key, rest-api-key", ISSUER, "https://unused", null);
+        ProdKakaoVerifier v = new ProdKakaoVerifier(twoKeys, () -> jwks(kakaoKeys, KID));
+
+        for (String key : new String[] {"javascript-key", "rest-api-key"}) {
+            String token = token(kakaoKeys, KID, "kakao-sub-12345", key, ISSUER,
+                    Instant.now().plusSeconds(600));
+            assertEquals("kakao-sub-12345", v.verify(token), key + "로 발급된 토큰이 막혔다");
+        }
+
+        // 목록에 없는 앱은 여전히 거절
+        String stranger = token(kakaoKeys, KID, "kakao-sub-12345", "someone-else", ISSUER,
+                Instant.now().plusSeconds(600));
+        assertThrows(ApiException.class, () -> v.verify(stranger));
+    }
+
+    @Test
     @DisplayName("★ 앱 키가 없으면 기동에서 막는다 — aud 대조를 건너뛴 채 뜨면 안 된다")
     void refusesToStartWithoutAppKey() {
         MildangProps.Kakao noKey = new MildangProps.Kakao(" ", ISSUER, "https://unused", null);

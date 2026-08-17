@@ -58,6 +58,7 @@ public class ProdKakaoVerifier implements KakaoVerifier {
     }
 
     private final MildangProps.Kakao config;
+    private final Set<String> audiences;
     private final JwksFetcher fetcher;
     private final Duration refreshInterval;
     private final ObjectMapper om = new ObjectMapper();
@@ -76,13 +77,16 @@ public class ProdKakaoVerifier implements KakaoVerifier {
 
     ProdKakaoVerifier(MildangProps.Kakao config, JwksFetcher fetcher, Duration refreshInterval) {
         this.config = config;
+        this.audiences = config.audiences();
         this.fetcher = fetcher;
         this.refreshInterval = refreshInterval;
-        if (config.appKey() == null || config.appKey().isBlank()) {
+        if (audiences.isEmpty()) {
             // 여기서 죽이지 않으면 aud 대조를 건너뛰게 되고, 그건 검증하지 않는 것과 같다.
             throw new IllegalStateException(
-                    "KAKAO_APP_KEY가 없습니다 — prod에서는 id_token의 aud를 대조할 앱 키가 반드시 필요합니다.");
+                    "KAKAO_APP_KEY가 없습니다 — prod에서는 id_token의 aud를 대조할 앱 키가 반드시 필요합니다."
+                            + " 로그인 방식이 여러 개면 콤마로 나열하세요(JavaScript 키,REST API 키).");
         }
+        log.info("카카오 앱 키 {}개로 aud를 대조합니다", audiences.size());
     }
 
     @Override
@@ -99,9 +103,9 @@ public class ProdKakaoVerifier implements KakaoVerifier {
                     .parseSignedClaims(idToken)
                     .getPayload();
 
-            // aud는 여러 개일 수 있어 직접 대조한다 — 우리 앱 키가 들어 있어야만 우리 토큰이다
+            // aud도 우리 키도 여러 개일 수 있다 — 하나라도 겹쳐야 우리 토큰이다
             Set<String> audience = claims.getAudience();
-            if (audience == null || !audience.contains(config.appKey())) {
+            if (audience == null || audience.stream().noneMatch(audiences::contains)) {
                 throw new ApiException(ErrorCode.TOKEN_INVALID);
             }
             String sub = claims.getSubject();
