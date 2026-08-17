@@ -28,8 +28,8 @@ public class ItemController {
     }
 
     @GetMapping("/presets")
-    public PresetsResponse presets() {
-        return itemService.presets();
+    public PresetsResponse presets(@CurrentUser String userId) {
+        return itemService.presets(userId);
     }
 
     @GetMapping("/items")

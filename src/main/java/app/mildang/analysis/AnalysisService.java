@@ -120,7 +120,10 @@ public class AnalysisService {
                 null, Map.of("candidates", List.of()));
     }
 
-    /** FREETEXT 게이트: points 0~999 · basis ≤40자 · unit 필수 · 실패면 후보 정확히 3개 */
+    /**
+     * FREETEXT 게이트: points 0~999 · basis ≤40자 · unit 필수 · <b>기준 수량 명시</b>(§8 #12) ·
+     * 실패면 후보 정확히 3개.
+     */
     private boolean passesGate(Estimate e) {
         if (e.resolved()) {
             return e.name() != null && !e.name().isBlank()
@@ -128,7 +131,8 @@ public class AnalysisService {
                     && e.points() != null && e.points() >= 0 && e.points() <= 999
                     && e.pm() != null && e.pm() >= 0
                     && e.confidence() != null
-                    && e.basis() != null && e.basis().length() <= 40;
+                    && e.basis() != null && e.basis().length() <= 40
+                    && app.mildang.ai.AiGates.hasQuantityBasis(e.unit(), e.basis());
         }
         return e.candidates() != null && e.candidates().size() == 3;
     }

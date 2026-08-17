@@ -25,7 +25,9 @@ import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Stream;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,6 +40,15 @@ public class ItemService {
 
     /** 아직 확정 전이라 흥정·수정이 가능한 상태 — 스캔 메뉴당 하나만 살아 있다 */
     static final List<ItemStatus> LIVE = List.of(ItemStatus.PENDING, ItemStatus.HAGGLED);
+
+    /** 「자주 먹는 것」이 보는 이력 범위 (§6.7) */
+    private static final java.time.Duration HISTORY_WINDOW = java.time.Duration.ofDays(28);
+
+    /** 화면 칩은 4개 고정 */
+    private static final int PRESET_COUNT = 4;
+
+    /** 이력에서 뽑은 프리셋의 id — 뒤에 그 항목의 id가 붙는다 */
+    static final String HISTORY_PREFIX = "pst_hist_";
 
     /** 같은 항목 재생성을 중복 제출로 보는 창 — 사람이 의도적으로 두 번 담기엔 너무 짧다 */
     private static final java.time.Duration DEDUPE_WINDOW = java.time.Duration.ofSeconds(3);
@@ -58,13 +69,57 @@ public class ItemService {
         this.weightService = weightService;
     }
 
-    public PresetsResponse presets() {
-        // TODO 이력 4주 집계(HISTORY)로 교체 — 지금은 기본 4종 (명세 §6.7)
-        return new PresetsResponse(
-                Presets.DEFAULTS.stream()
-                        .map(p -> new PresetView(p.id(), p.name(), p.unit(), p.points(), p.pm()))
-                        .toList(),
-                "DEFAULT");
+    /**
+     * 「자주 먹는 것」 4개 (§6.7) — 최근 4주에 <b>실제로 기록한</b> 것을 빈도순으로.
+     *
+     * <p>이력이 모자라면 기본 4종으로 채운다(처음 쓰는 사람도 칩이 비지 않게).
+     * 챌린지를 넘어 사용자 단위로 본다 — 지난 판에 자주 먹던 것도 «자주 먹는 것»이다.
+     *
+     * <p>⚠ 표시 가격은 <b>항상 original</b>이다. 과거 합의값(라면 80을 40으로 합의한 것)을 칩에 쓰면
+     * 다음에 담을 때 40이 새 기준선이 되고, 또 흥정하면 20이 되어 기준선이 계속 내려간다 (부록 A #3).
+     */
+    @Transactional(readOnly = true)
+    public PresetsResponse presets(String userId) {
+        Instant since = Instant.now().minus(HISTORY_WINDOW);
+        List<Item> history = itemRepository
+                .findByUserIdAndStatusAndRecordedAtAfter(userId, ItemStatus.RECORDED, since);
+
+        // 같은 메뉴명끼리 묶어 빈도순 — 같은 횟수면 최근에 먹은 것이 앞으로
+        Map<String, List<Item>> byName = history.stream()
+                .collect(java.util.stream.Collectors.groupingBy(Item::getOriginalName));
+        List<PresetView> picked = byName.values().stream()
+                .sorted(java.util.Comparator
+                        .comparingInt((List<Item> group) -> group.size()).reversed()
+                        .thenComparing(group -> latestOf(group).getRecordedAt(),
+                                java.util.Comparator.reverseOrder()))
+                .limit(PRESET_COUNT)
+                .map(group -> {
+                    Item recent = latestOf(group);
+                    // 이력 프리셋은 그 항목을 가리킨다 — 담을 때 original 값을 그대로 복사한다
+                    return new PresetView(HISTORY_PREFIX + recent.getId(), recent.getOriginalName(),
+                            recent.getOriginalUnit(), recent.getOriginalPoints(), recent.getOriginalPm());
+                })
+                .collect(java.util.stream.Collectors.toCollection(java.util.ArrayList::new));
+
+        boolean fromHistory = !picked.isEmpty();
+
+        // 모자란 만큼 기본 4종으로 — 이미 올라온 메뉴명은 건너뛴다
+        Set<String> names = picked.stream().map(PresetView::name)
+                .collect(java.util.stream.Collectors.toCollection(java.util.HashSet::new));
+        for (Presets.Preset preset : Presets.DEFAULTS) {
+            if (picked.size() >= PRESET_COUNT) {
+                break;
+            }
+            if (names.add(preset.name())) {
+                picked.add(new PresetView(preset.id(), preset.name(), preset.unit(),
+                        preset.points(), preset.pm()));
+            }
+        }
+        return new PresetsResponse(List.copyOf(picked), fromHistory ? "HISTORY" : "DEFAULT");
+    }
+
+    private static Item latestOf(List<Item> group) {
+        return group.stream().max(java.util.Comparator.comparing(Item::getRecordedAt)).orElseThrow();
     }
 
     @Transactional
@@ -121,16 +176,30 @@ public class ItemService {
             item.setOriginalBasis(analysis.getBasis());
         } else if (request.presetId() != null) {
             // (C) 자주 먹는 것 프리셋으로
-            Presets.Preset preset = Presets.byId(request.presetId())
-                    .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "프리셋을 찾을 수 없어요."));
             item.setSourceType(SourceType.PRESET);
-            item.setSourceRefId(preset.id());
-            item.setOriginalName(preset.name());
-            item.setOriginalUnit(preset.unit());
-            item.setOriginalPoints(preset.points());
-            item.setOriginalPm(preset.pm());
-            item.setOriginalConfidence(preset.confidence());
-            item.setOriginalBasis(preset.basis());
+            item.setSourceRefId(request.presetId());
+            if (request.presetId().startsWith(HISTORY_PREFIX)) {
+                // (C-2) 이력에서 뽑은 칩 — 그때 그 항목의 original을 그대로 가져온다.
+                // adjusted(합의값)를 쓰면 기준선이 판마다 내려간다 (부록 A #3).
+                Item source = itemRepository.findById(request.presetId().substring(HISTORY_PREFIX.length()))
+                        .filter(i -> i.getUserId().equals(userId))
+                        .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "프리셋을 찾을 수 없어요."));
+                item.setOriginalName(source.getOriginalName());
+                item.setOriginalUnit(source.getOriginalUnit());
+                item.setOriginalPoints(source.getOriginalPoints());
+                item.setOriginalPm(source.getOriginalPm());
+                item.setOriginalConfidence(source.getOriginalConfidence());
+                item.setOriginalBasis(source.getOriginalBasis());
+            } else {
+                Presets.Preset preset = Presets.byId(request.presetId())
+                        .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "프리셋을 찾을 수 없어요."));
+                item.setOriginalName(preset.name());
+                item.setOriginalUnit(preset.unit());
+                item.setOriginalPoints(preset.points());
+                item.setOriginalPm(preset.pm());
+                item.setOriginalConfidence(preset.confidence());
+                item.setOriginalBasis(preset.basis());
+            }
         } else {
             // (B) 스캔 메뉴로 — 생성 시점 값을 original로 복사 (수정 소급 없음, §5.5)
             if (request.menuId() == null) {

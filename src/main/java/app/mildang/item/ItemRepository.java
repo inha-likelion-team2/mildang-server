@@ -1,5 +1,6 @@
 package app.mildang.item;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +27,9 @@ public interface ItemRepository extends JpaRepository<Item, String> {
     /** 그날 먹은 것 — 대시보드 today 블록, 날짜 필터 조회 공용 */
     List<Item> findByChallengeIdAndLogicalDateAndStatusInOrderByRecordedAtAsc(
             String challengeId, LocalDate logicalDate, List<ItemStatus> statuses);
+
+    /** 「자주 먹는 것」 이력 집계 — 챌린지를 넘어 사용자 단위로 본다 (§6.7) */
+    List<Item> findByUserIdAndStatusAndRecordedAtAfter(String userId, ItemStatus status, Instant since);
 
     /** 캘린더 — 그 달에 기록이 있는 날을 표시하려면 범위로 한 번에 가져와야 한다 */
     List<Item> findByChallengeIdAndLogicalDateBetweenAndStatusInOrderByLogicalDateAsc(
