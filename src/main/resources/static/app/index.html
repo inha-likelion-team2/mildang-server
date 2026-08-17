@@ -505,7 +505,11 @@
 const BASE = '/v1';
 const $ = id => document.getElementById(id);
 const CONF = { CERTAIN: '확실', HIGH: '높음', MEDIUM: '보통' };
-let token = null, refreshToken = null, challengeId = null, challenge = null, budget = null;
+// challengeId는 «지금 진행 중인» 챌린지다 — 새로 시작하면 덮어써진다.
+// 완주 리포트는 그것과 별개의 챌린지를 가리키므로 슬롯을 따로 둔다.
+// (같이 쓰면 완주 화면에서 새 챌린지를 시작한 뒤 «리포트 보기»가 409를 맞는다)
+let token = null, refreshToken = null, challengeId = null, reportChallengeId = null,
+    challenge = null, budget = null;
 let currentPeriod = null, currentPrice = 0, planData = null, selectedPlan = null;
 let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3' };
 let selectedWeekday = 'FRI', sheetCtx = null, scanId = null, scanData = null;
@@ -524,7 +528,8 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), 3800);
 }
 
-async function call(method, path, body, isForm, retried) {
+// quiet=true : 실패를 호출부가 직접 처리하는 «탐색» 요청 — 사용자에게 토스트를 띄우지 않는다
+async function call(method, path, body, isForm, quiet, retried) {
   const opts = { method, headers: {} };
   if (token) opts.headers['Authorization'] = 'Bearer ' + token;
   if (body && !isForm) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
@@ -535,15 +540,15 @@ async function call(method, path, body, isForm, retried) {
   if (!res.ok) {
     // access 토큰은 30분이라 시연 대기 중에 만료된다. 조용히 갱신하고 한 번만 다시 시도.
     if (res.status === 401 && refreshToken && !retried && path !== '/auth/refresh') {
-      if (await tryRefresh()) return call(method, path, body, isForm, true);
+      if (await tryRefresh()) return call(method, path, body, isForm, quiet, true);
     }
     // 챌린지가 방금 끝났으면(마지막 날 경계) 화면을 다시 라우팅해 완주 안내로 넘긴다
-    if (res.status === 404 && data && data.error && data.error.message
+    if (res.status === 404 && !quiet && data && data.error && data.error.message
         && data.error.message.indexOf('진행 중인 챌린지가 없어요') === 0) {
       route();
       throw { status: res.status, data };
     }
-    if (data && data.error && data.error.message) toast(data.error.message);
+    if (!quiet && data && data.error && data.error.message) toast(data.error.message);
     throw { status: res.status, data };
   }
   return data;
@@ -590,24 +595,27 @@ async function route() {
   try {
     const r = await call('GET', '/challenges/current');
     saveLast(r.challenge.id); challenge = r.challenge;
-    if (r.challenge.status === 'COMPLETED') nav('done'); else nav('dash');
+    if (r.challenge.status === 'COMPLETED') { showDone(r.challenge.id); } else nav('dash');
   } catch (e) {
-    // 진행 중 없음 → 저장해둔 마지막 챌린지가 완주 상태면 리포트 안내 화면으로 (자동 이동 아님)
+    // 진행 중 없음 → 저장해둔 마지막 챌린지가 완주 상태면 리포트 안내 화면으로 (자동 이동 아님).
+    // 완주 전(409)이거나 없는 챌린지면 조용히 기간 선택으로 — 탐색이라 토스트를 띄우지 않는다.
     const saved = userKey && localStorage.getItem(userKey);
     if (saved) {
-      try { await call('GET', `/challenges/${saved}/report`); challengeId = saved; nav('done'); return; }
+      try { await call('GET', `/challenges/${saved}/report`, null, false, true); showDone(saved); return; }
       catch (e2) {}
     }
     nav('plan');
   }
 }
+/** 완주 안내 화면 — 어느 챌린지의 리포트인지 붙잡아 둔다 */
+function showDone(id) { reportChallengeId = id; nav('done'); }
 function openDev() { $('dev').classList.add('on'); }
 async function seed(s) {
   const r = await call('POST', '/demo/seed', { scenario: s });
   $('dev').classList.remove('on');
   if (r.challengeId) saveLast(r.challengeId); // COMPLETED는 current 404라 시드 응답으로 보존
   if (s === 'FRESH') { nav('plan'); return; }
-  if (s === 'COMPLETED') { nav('done'); return; }
+  if (s === 'COMPLETED') { showDone(r.challengeId); return; }
   await route();
 }
 async function devCall(m, p, b) { await call(m, p, b); $('dev').classList.remove('on'); if (token) route(); }
@@ -708,7 +716,7 @@ async function confirmBudget(key, weekly) {
 async function refresh() {
   const r = await call('GET', '/challenges/current');
   saveLast(r.challenge.id); challenge = r.challenge; budget = r.budget;
-  if (r.challenge.status === 'COMPLETED') { nav('done'); return; }
+  if (r.challenge.status === 'COMPLETED') { showDone(r.challenge.id); return; }
   $('d-label').textContent = r.challenge.label; // label에 일차 포함 (예: 1주 챌린지 · 4일차)
   $('d-balance').textContent = r.budget.balance;
   $('d-total').textContent = '/ ' + r.budget.total;
@@ -1051,7 +1059,18 @@ async function pickCheckin(k, v) {
 
 // ---------- S7 · 리포트 ----------
 async function loadReport() {
-  const r = await call('GET', `/challenges/${challengeId}/report`);
+  const id = reportChallengeId || challengeId;
+  let r;
+  try {
+    r = await call('GET', `/challenges/${id}/report`, null, false, true);
+  } catch (e) {
+    // 볼 리포트가 없으면 막다른 길로 두지 않고 현재 상태에 맞는 화면으로 돌려보낸다
+    toast(e.status === 409 ? '아직 진행 중인 챌린지예요 — 완주하면 리포트가 나와요.'
+                           : '리포트를 찾지 못했어요.');
+    reportChallengeId = null;
+    await route();
+    return;
+  }
   reportData = r; nextChallengeRec = r.nextChallenge;
   $('r-label').textContent = r.challenge.label; // label이 이미 완주 문구 포함
   $('r-title').textContent = r.title || '당신의 몸이 쓴 리포트';
@@ -1079,7 +1098,7 @@ async function loadReport() {
   $('r-cta').textContent = r.nextChallenge.ctaLabel;
 }
 async function openShare() {
-  const r = await call('POST', `/challenges/${challengeId}/report/share-card`, { mentions: [] });
+  const r = await call('POST', `/challenges/${reportChallengeId || challengeId}/report/share-card`, { mentions: [] });
   $('sh-hashtag').textContent = r.hashtag || '#밀가루흥정챌린지';
   $('shc-label').textContent = (reportData ? reportData.challenge.label : '완주') + ' · 나의 발견';
   if (reportData && reportData.finding.available) {
