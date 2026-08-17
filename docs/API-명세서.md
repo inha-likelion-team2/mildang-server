@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (14) | `GET /plans`의 `title`을 확정 와이어프레임 문구로 — 「맛보기 한 판/제대로 한 판/장기전」 → **「맛보기/단기/장기」** |
 | 2026-08-17 (13) | **`KAKAO_APP_KEY`에 앱 키를 콤마로 여러 개** 넣을 수 있다 — 웹은 로그인 방식에 따라 `id_token.aud`가 JavaScript 키/REST API 키로 갈린다. 하나라도 맞으면 통과 (계약 무변경, 설정만) |
 | 2026-08-17 (12) | **확정 세트 렌더 대조 반영** — ① `POST /challenges/{id}/budget`에 **`weightKg`**(설문의 「체중은 어떻게 되나요?」, 선택) ② `POST /items`의 약속을 **날짜(`promiseDate`)로** 받는다(기존 `weekday`도 계속 동작) ③ `GET /analyses/recent`가 **값까지, 4개** |
 | 2026-08-17 (11) | **「자주 먹는 것」 이력 집계(§6.7) 구현** — `GET /presets`가 최근 4주 기록을 빈도순으로 주고 `source`가 `HISTORY`가 된다. 이력 칩의 `id`는 `pst_hist_{itemId}`. **AI 게이트에 기준 수량 확인(§8 #12) 추가** — `unit`·`basis` 중 어디에도 수량 표현이 없으면 재분석 |
@@ -195,18 +196,18 @@
 ```json
 {
   "plans": [
-    { "period": "W1", "title": "맛보기 한 판", "subtitle": "최초 1회 무료 · 처음이라면 추천",
+    { "period": "W1", "title": "맛보기", "subtitle": "최초 1회 무료 · 처음이라면 추천",
       "priceKrw": 0, "recommended": true, "available": true, "unavailableReason": null },
-    { "period": "W2", "title": "제대로 한 판", "subtitle": "리포트가 뚜렷해지는 최소 기간",
+    { "period": "W2", "title": "단기", "subtitle": "리포트가 뚜렷해지는 최소 기간",
       "priceKrw": 2000, "recommended": false, "available": true, "unavailableReason": null },
-    { "period": "W4", "title": "장기전", "subtitle": "주차별로 예산을 나눠 드려요",
+    { "period": "W4", "title": "장기", "subtitle": "주차별로 예산을 나눠 드려요",
       "priceKrw": 3500, "recommended": false, "available": true, "unavailableReason": null }
   ],
   "notice": "결제는 프리미엄이 아니라, 진짜 할 건지 확인하는 문턱이에요."
 }
 ```
 
-- ⚠ `title`은 **"1주"가 아니라 "맛보기 한 판"** 같은 문구입니다. 기간 표기(1주/2주/4주)가 필요하면 `period`로 프론트에서 매핑하세요.
+- ⚠ `title`은 **"1주"가 아니라 "맛보기"·"단기"·"장기"** 입니다(확정 와이어프레임 85:804 문구). 기간 표기(1주/2주/4주)가 필요하면 `period`로 프론트에서 매핑하세요.
 - ⚠ W4의 `subtitle`이 "주차별로 예산을 나눠 드려요"인데 **v1.3에서 주차별 예산은 폐지**됐습니다(총액 단일). 문구 수정이 필요합니다 — 기획 확인 대기.
 - 무료 1주를 이미 쓴 계정은 `W1`이 `available: false` + `unavailableReason: "무료 체험을 이미 쓰셨어요"`.
 - `recommended`는 W1에만 `true`입니다.

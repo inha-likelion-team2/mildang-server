@@ -144,71 +144,81 @@
 
 <!-- S0 · 스플래시 / 로그인 -->
 <div class="scr on" id="s-splash">
-  <div style="margin-top:120px;display:flex;flex-direction:column;align-items:center;gap:14px">
-    <span data-av="88"></span>
-    <div class="disp" style="font-size:20px;color:#2b2b2b;letter-spacing:.04em">밀당</div>
-  </div>
-  <h2 class="disp" style="margin-top:28px;text-align:center;font-size:32px;line-height:1.3">끊지 마세요.<br>밀당하세요.</h2>
-  <p style="margin-top:10px;text-align:center;font-size:14px;color:rgba(0,0,0,.6);line-height:1.6">밀가루 예산을 걸고, 밀당이와<br>양·구성을 흥정하며 버티는 챌린지</p>
+  <div style="margin-top:56px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <h2 class="disp" style="margin-top:90px;font-size:32px;line-height:1.35">밀가루,<br>끊지 말고<br>밀당하세요.</h2>
+  <p style="margin-top:16px;font-size:13.5px;color:var(--muted);line-height:1.6">밀가루 예산을 설정하고,<br>먹는 걸 기록하면 AI가 균형을 알려드려요</p>
   <div class="grow"></div>
-  <button class="pill-btn" onclick="login('demo-user-1')">카카오로 시작</button>
-  <p style="margin-top:10px;text-align:center;font-size:11px;color:rgba(0,0,0,.4)">데모 빌드 — 실제 카카오 인증 없이 로그인됩니다</p>
+  <button class="pill-btn" onclick="login('demo-user-1')">키카오 로그인</button>
+  <p style="margin-top:10px;text-align:center;font-size:11px;color:var(--muted)">데모 빌드 — 실제 카카오 인증 없이 로그인됩니다</p>
 </div>
 
 <!-- S1 · 온보딩 기간 선택 -->
 <div class="scr" id="s-plan">
-  <div style="margin-top:26px;display:flex;flex-direction:column;gap:6px">
-    <div class="disp" style="font-size:15px;color:#2b2b2b;letter-spacing:.04em">밀당</div>
-    <h2 class="disp" style="font-size:30px;line-height:1.25">끊지 마세요.<br>밀당하세요.</h2>
-    <p style="margin-top:4px;font-size:14px;color:rgba(0,0,0,.6)">얼마나 버텨볼까요? 기간은 흥정 테이블의 크기예요.</p>
-  </div>
-  <div id="plan-list" style="margin-top:24px;display:flex;flex-direction:column;gap:12px"></div>
+  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <h2 class="disp" style="margin-top:34px;font-size:28px">얼마나 밀당 해볼까요?</h2>
+  <p style="margin-top:8px;font-size:13px;color:var(--muted)">처음이라면 1주부터 가볍게 추천해요.</p>
+  <div id="plan-list" style="margin-top:22px;display:flex;flex-direction:column;gap:10px"></div>
   <div class="grow"></div>
-  <p style="margin:0 0 12px;font-size:12px;text-align:center;color:rgba(0,0,0,.5)">결제는 프리미엄이 아니라, 진짜 할 건지 확인하는 문턱이에요.</p>
-  <button class="pill-btn" id="plan-cta" onclick="startPlan()">시작</button>
+  <button class="pill-btn" id="plan-cta" onclick="startPlan()">결제 하기</button>
 </div>
 
 <!-- S1p · 결제 (데모 목) -->
 <div class="scr" id="s-pay">
-  <div class="back-head">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('plan')"><path d="M15 18l-6-6 6-6"/></svg>
-    <div style="flex:1;font-size:15px;font-weight:700">결제</div>
-  </div>
-  <div style="margin-top:28px;background:#fff;border:2.5px solid #2b2b2b;border-radius:20px;padding:20px;box-shadow:0 3px 10px rgba(0,0,0,.12)">
-    <div class="disp" style="font-size:34px;color:#2b2b2b" id="pay-period">2주</div>
-    <div style="margin-top:4px;font-size:14px;font-weight:700" id="pay-title">제대로 한 판</div>
-    <div class="disp" style="margin-top:10px;font-size:24px" id="pay-price">2,000원</div>
-  </div>
-  <div class="bubble-row" style="margin-top:16px">
-    <span data-av="34"></span>
-    <div class="bubble">결제는 진짜 할 건지 확인하는 문턱이에요. 데모라 실제 결제는 일어나지 않습니다.</div>
+  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <h2 class="disp" style="margin-top:30px;font-size:27px;line-height:1.35" id="pay-head">시작 해볼까요?</h2>
+  <p style="margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6" id="pay-desc"></p>
+  <div class="card sel" style="margin-top:24px">
+    <div style="display:flex;align-items:center">
+      <div style="flex:1;font-size:17px;font-weight:900" id="pay-period">챌린지</div>
+      <div class="tagpill" id="pay-badge"></div>
+    </div>
+    <div style="margin-top:10px;font-size:13px;font-weight:800" id="pay-title"></div>
+    <div style="margin-top:2px;font-size:12.5px;color:var(--muted)" id="pay-sub"></div>
+    <div style="margin-top:14px;height:1px;background:rgba(0,0,0,.08)"></div>
+    <div id="pay-feats" style="margin-top:12px;display:flex;flex-direction:column;gap:10px"></div>
+    <div style="margin-top:14px;height:1px;background:rgba(0,0,0,.08)"></div>
+    <div style="margin-top:12px;display:flex;align-items:center">
+      <div style="flex:1;font-size:14px;font-weight:900">결제 금액</div>
+      <div class="disp" style="font-size:17px" id="pay-price"></div>
+    </div>
   </div>
   <div class="grow"></div>
-  <button class="pill-btn" id="pay-cta" onclick="payAndCreate()">결제하기</button>
+  <button class="pill-btn" id="pay-cta" onclick="payAndCreate()">결제하고 시작 하기</button>
 </div>
 
 <!-- S2 · 온보딩 3문항 + 예산 제시 -->
 <div class="scr" id="s-survey">
-  <div style="margin-top:48px;font-size:12px;font-weight:700;color:rgba(0,0,0,.45)">평소에 얼마나 드세요? · 3문항</div>
-  <div id="survey-rows" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
-  <button class="pill-btn" style="margin-top:16px;padding:13px;font-size:15px" onclick="estimate()">예산 제안 받기</button>
+  <div style="margin-top:44px;display:flex;align-items:center">
+    <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+    <button onclick="estimate()" style="background:none;border:none;font-size:14px;font-weight:800;color:var(--y-deep)">저장</button>
+  </div>
+  <h2 class="disp" style="margin-top:26px;font-size:28px;line-height:1.3">평소 식습관을<br>알려주세요</h2>
+  <p style="margin-top:10px;font-size:13px;color:var(--muted)">나에게 맞는 1주 예산을 추천해드릴게요.</p>
+  <div id="survey-rows" style="margin-top:22px;display:flex;flex-direction:column;gap:18px"></div>
+  <div style="margin-top:20px;font-size:14px;font-weight:800">체중은 어떻게 되나요?</div>
+  <div style="margin-top:9px;display:flex;align-items:center;gap:8px;background:var(--gray);border-radius:12px;padding:15px 16px">
+    <input id="sv-weight" type="number" step="0.1" placeholder="현재 체중을 입력해주세요"
+      style="flex:1;background:none;border:none;font-size:14.5px;font-family:inherit;font-weight:700;outline:none">
+    <span style="font-size:13px;color:var(--muted)">kg</span>
+  </div>
   <div id="est-box" style="display:none">
-    <div style="margin-top:18px;background:#fff;border-radius:22px;padding:20px 20px 16px;border:1.5px dashed #2b2b2b">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.06em;color:#333" id="est-label">1주 예산</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-top:2px">
-        <div class="disp" style="font-size:64px;line-height:1;color:#2b2b2b" id="est-num">85</div>
-        <div style="font-size:13px;color:rgba(0,0,0,.5)">포인트<span id="est-total" style="margin-left:6px"></span></div>
+    <div class="card sel" style="margin-top:20px">
+      <div style="font-size:13px;font-weight:800" id="est-label">1주 예산</div>
+      <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
+        <div class="disp" style="font-size:44px;line-height:1" id="est-num">85</div>
+        <div style="font-size:13px;color:var(--muted)">밀<span id="est-total" style="margin-left:6px"></span></div>
       </div>
-      <p style="margin:10px 0 0;font-size:13px;line-height:1.55;color:rgba(0,0,0,.75)" id="est-rationale"></p>
+      <p style="margin:10px 0 0;font-size:13px;line-height:1.6" id="est-rationale"></p>
       <div id="est-anchors" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"></div>
     </div>
     <div class="bubble-row" style="margin-top:14px">
       <span data-av="34"></span>
       <div class="bubble" id="est-bubble"></div>
     </div>
-    <div style="display:flex;gap:8px;margin-top:14px" id="est-options"></div>
+    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px" id="est-options"></div>
   </div>
   <div class="grow"></div>
+  <button class="pill-btn" style="margin-top:16px" onclick="estimate()">시작 하기</button>
 </div>
 
 <!-- S3 · 대시보드 -->
@@ -274,90 +284,91 @@
 
 <!-- S3a · 약속 사전 결재 -->
 <div class="scr" id="s-promise">
-  <div class="back-head">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('dash')"><path d="M15 18l-6-6 6-6"/></svg>
+  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('dash')" style="opacity:.5;cursor:pointer"><path d="M15 18l-6-6 6-6"/></svg>
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:700">약속 사전 결재</div>
-      <div style="font-size:11.5px;color:rgba(0,0,0,.5)">피할 수 없는 약속은 미리 잡아두세요</div>
+      <div style="font-size:16px;font-weight:900">약속 사전 결제</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">피할 수 없는 약속은 미리 잡아두세요</div>
     </div>
   </div>
-  <div style="margin-top:20px;font-size:12px;font-weight:700;color:rgba(0,0,0,.45)">언제예요?</div>
-  <div id="p-weekdays" style="margin-top:8px;display:flex;gap:6px"></div>
-  <div style="margin-top:16px;font-size:12px;font-weight:700;color:rgba(0,0,0,.45)">뭐 먹기로 했어요?</div>
-  <button onclick="openSheet('PROMISE','promise')" style="margin-top:8px;width:100%;text-align:left;background:#fff;border:1.5px dashed rgba(0,0,0,.28);border-radius:18px;padding:13px 15px;display:flex;align-items:center;gap:11px">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
-    <div style="flex:1;font-size:14px;font-weight:700;color:#222">메뉴 입력하기</div>
-  </button>
-  <div class="divider-row" style="margin-top:14px"><div></div><span>입력하면 아래에 항목이 생겨요</span><div></div></div>
-  <div id="p-items" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
+
+  <div style="margin-top:20px;font-size:14px;font-weight:800">언제 예요?</div>
+  <select id="p-date" style="margin-top:9px;width:100%;background:var(--gray);border:none;border-radius:12px;padding:16px;font-size:14.5px;font-family:inherit;font-weight:700;outline:none"></select>
+
+  <div style="margin-top:18px;font-size:14px;font-weight:800">뭐 먹기로 했어요?</div>
+  <button onclick="openSheet('PROMISE','promise')" style="margin-top:9px;width:100%;text-align:left;background:var(--gray);border:none;border-radius:12px;padding:16px;font-size:14.5px;font-weight:700;color:var(--muted)">메뉴 입력하기</button>
+
+  <div style="margin-top:20px;height:1px;background:var(--y)"></div>
+  <div id="p-items" style="margin-top:18px;display:flex;flex-direction:column;gap:10px"></div>
   <div class="grow"></div>
-  <div style="text-align:center;font-size:10.5px;color:rgba(0,0,0,.4);line-height:1.55;margin-top:14px">약속은 여러 개 잡을 수 있어요 · 항목이 쌓입니다</div>
 </div>
 
 <!-- S3b · 식사하기 -->
 <div class="scr" id="s-meal">
   <div class="back-head">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('dash')"><path d="M15 18l-6-6 6-6"/></svg>
-    <div style="flex:1;font-size:15px;font-weight:700">식사하기</div>
   </div>
-  <div style="margin-top:16px">
-    <div class="disp" style="font-size:26px;line-height:1.25">지금 뭐 드실 거예요?</div>
-    <div style="margin-top:6px;font-size:12.5px;color:rgba(0,0,0,.55)" id="m-sub"></div>
-  </div>
-  <div style="margin-top:16px;display:flex;flex-direction:column;gap:9px">
-    <button onclick="nav('camera')" style="text-align:left;background:#fff;border:1.5px solid rgba(0,0,0,.18);border-radius:20px;padding:15px 16px;display:flex;align-items:center;gap:13px">
-      <div style="width:42px;height:42px;flex:none;border-radius:13px;background:#ececec;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
-      <div style="flex:1"><div style="font-size:15.5px;font-weight:900;color:#222">메뉴판 찍기</div><div style="font-size:11.5px;color:rgba(0,0,0,.5);margin-top:2px">식당·카페에 있다면</div></div>
+  <h2 class="disp" style="margin-top:18px;font-size:28px">지금 뭐 드실 거예요?</h2>
+  <p style="margin-top:8px;font-size:13px;color:var(--muted)" id="m-sub"></p>
+
+  <div style="margin-top:20px;display:flex;flex-direction:column;gap:10px">
+    <button onclick="nav('camera')" style="text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px">
+      <div style="width:44px;height:44px;flex:none;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg></div>
+      <div style="flex:1"><div style="font-size:16px;font-weight:900">메뉴판 찍기</div><div style="font-size:12px;color:var(--muted);margin-top:2px">식당・카페</div></div>
+      <div style="color:var(--muted);font-size:18px">›</div>
     </button>
-    <button onclick="openSheet('MEAL','meal')" style="text-align:left;background:#fff;border:1.5px solid rgba(0,0,0,.18);border-radius:20px;padding:15px 16px;display:flex;align-items:center;gap:13px">
-      <div style="width:42px;height:42px;flex:none;border-radius:13px;background:#ececec;display:flex;align-items:center;justify-content:center"><svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div>
-      <div style="flex:1"><div style="font-size:15.5px;font-weight:900;color:#222">메뉴 직접 입력</div><div style="font-size:11.5px;color:rgba(0,0,0,.5);margin-top:2px">집·편의점·배달이라면</div></div>
+    <button onclick="openSheet('MEAL','meal')" style="text-align:left;background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;display:flex;align-items:center;gap:14px">
+      <div style="width:44px;height:44px;flex:none;border-radius:50%;background:var(--gray);display:flex;align-items:center;justify-content:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z"/></svg></div>
+      <div style="flex:1"><div style="font-size:16px;font-weight:900">메뉴판 직접 입력</div><div style="font-size:12px;color:var(--muted);margin-top:2px">집・편의점・배달</div></div>
+      <div style="color:var(--muted);font-size:18px">›</div>
     </button>
   </div>
-  <div style="margin-top:16px;font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(0,0,0,.45)">자주 먹는 것</div>
-  <div id="m-presets" style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap"></div>
-  <div class="divider-row" style="margin-top:14px"><div></div><span>항목 상태 · 대기 → 흥정 완료 → 기록됨</span><div></div></div>
-  <div id="m-items" style="margin-top:10px;display:flex;flex-direction:column;gap:8px"></div>
+
+  <div style="margin-top:22px;font-size:14px;font-weight:900">자주 먹는 것</div>
+  <div id="m-presets" style="margin-top:10px;display:flex;gap:7px;flex-wrap:wrap"></div>
+  <div id="m-items" style="margin-top:18px;display:flex;flex-direction:column;gap:10px"></div>
   <div class="grow"></div>
 </div>
 
 <!-- S4a · 스캔 카메라 -->
-<div class="scr" id="s-camera" style="background:#2b2b2b;color:#fff">
-  <div style="margin-top:52px;display:flex;align-items:center;gap:10px">
+<div class="scr" id="s-camera" style="background:#1A1A1A;color:#fff">
+  <div style="margin-top:48px;display:flex;align-items:center;gap:10px">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="opacity:.7;cursor:pointer" onclick="nav('meal')"><path d="M15 18l-6-6 6-6"/></svg>
-    <div style="flex:1;text-align:center;font-size:13px;font-weight:700;color:rgba(255,255,255,.85)">메뉴판이 프레임 안에 들어오게</div>
-    <div style="width:20px"></div>
+    <div style="flex:1"></div>
   </div>
-  <div onclick="pickImage()" style="margin-top:14px;flex:1;border:2px dashed rgba(255,255,255,.4);border-radius:20px;background:repeating-linear-gradient(45deg,rgba(255,255,255,.05),rgba(255,255,255,.05) 10px,transparent 10px,transparent 20px);display:flex;align-items:center;justify-content:center;cursor:pointer">
-    <div id="cam-hint" style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:rgba(255,255,255,.5)">탭해서 메뉴판 사진 선택</div>
+  <div style="margin-top:18px;text-align:center">
+    <div style="font-size:19px;font-weight:900">메뉴판이 프레임 안에 들어오게</div>
+    <div id="cam-status" style="margin-top:8px;font-size:13px;color:rgba(255,255,255,.6)">촬영하면 3초 안에 가격표가 나와요</div>
   </div>
-  <div id="cam-status" style="margin-top:12px;text-align:center;font-size:11.5px;color:rgba(255,255,255,.55)">촬영하면 가격표가 나와요 · 실 AI는 수십 초 걸릴 수 있어요</div>
-  <div style="margin-top:16px;display:flex;align-items:center;justify-content:space-between;padding:0 20px">
-    <div style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,.65);cursor:pointer" onclick="pickImage()">앨범</div>
-    <div onclick="pickImage()" style="width:68px;height:68px;border-radius:50%;border:4px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="width:52px;height:52px;border-radius:50%;background:#fff"></div></div>
-    <div style="font-size:11.5px;font-weight:700;color:rgba(255,255,255,.65);cursor:pointer" onclick="openSheet('MEAL','meal')">수기 입력</div>
+  <div onclick="pickImage()" style="margin-top:20px;flex:1;border:2px solid rgba(255,255,255,.35);border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer">
+    <div id="cam-hint" style="font-size:13px;color:rgba(255,255,255,.45)">탭해서 메뉴판 사진 선택</div>
+  </div>
+  <div style="margin-top:22px;display:flex;align-items:center;justify-content:space-between;padding:0 22px">
+    <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer" onclick="pickImage()">앨범</div>
+    <div onclick="pickImage()" style="width:70px;height:70px;border-radius:50%;border:4px solid #fff;display:flex;align-items:center;justify-content:center;cursor:pointer"><div style="width:54px;height:54px;border-radius:50%;background:var(--y)"></div></div>
+    <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,.6);cursor:pointer" onclick="openSheet('MEAL','meal')">직접 입력</div>
   </div>
   <input type="file" id="cam-file" accept="image/jpeg,image/png" style="display:none" onchange="doScan(this.files[0])">
 </div>
 
 <!-- S4b · 스캔 결과 -->
-<div class="scr" id="s-scanresult" style="padding:14px 18px 20px">
-  <div class="back-head">
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('meal')"><path d="M15 18l-6-6 6-6"/></svg>
+<div class="scr" id="s-scanresult">
+  <div style="margin-top:44px;display:flex;align-items:center">
+    <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+    <button onclick="nav('camera')" style="background:none;border:none;font-size:14px;font-weight:800;color:var(--y-deep)">재촬영</button>
+  </div>
+  <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" style="opacity:.5;cursor:pointer" onclick="nav('meal')"><path d="M15 18l-6-6 6-6"/></svg>
     <div style="flex:1">
-      <div style="font-size:15px;font-weight:700" id="sc-place"></div>
-      <div style="font-size:11.5px;color:rgba(0,0,0,.5)">메뉴판 스캔 · 방금 · 가격을 탭하면 수정</div>
+      <div style="font-size:16px;font-weight:900" id="sc-place"></div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">메뉴판 스캔 방금 가격을 탭하면 수정</div>
     </div>
-    <button class="tagpill" style="border:none;font-size:11.5px;padding:4px 10px;cursor:pointer" onclick="nav('camera')">재촬영</button>
   </div>
   <div id="sc-rec"></div>
-  <div style="margin-top:14px;display:flex;align-items:center;justify-content:space-between">
-    <div style="font-size:11px;font-weight:700;letter-spacing:.08em;color:rgba(0,0,0,.45)">밀가루 가격 · 싼 순</div>
-    <div style="font-size:11px;color:rgba(0,0,0,.4)">밀당 버튼으로 그 메뉴 흥정</div>
-  </div>
-  <div id="sc-menus" style="margin-top:8px;display:flex;flex-direction:column;gap:7px"></div>
+  <div style="margin-top:20px;font-size:14px;font-weight:900">밀가루 크기가 낮은 순</div>
+  <div id="sc-menus" style="margin-top:10px;display:flex;flex-direction:column;gap:9px"></div>
   <div class="grow"></div>
-  <div style="text-align:center;font-size:11.5px;color:rgba(0,0,0,.45);margin-top:12px">인식이 이상해요? <span style="color:#333;font-weight:700;text-decoration:underline;text-underline-offset:3px;cursor:pointer" onclick="openSheet('MEAL','meal')">수기로 입력</span></div>
 </div>
 
 <!-- S6 · 컨디션 체크인 -->
@@ -450,70 +461,54 @@
   <div class="body">
     <div class="handle"></div>
     <div style="display:flex;align-items:center;gap:10px">
-      <div style="flex:1;font-size:17px;font-weight:900">뭐 드실 거예요?</div>
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" style="opacity:.45;cursor:pointer" onclick="closeSheet()"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      <div style="flex:1;font-size:18px;font-weight:900">직접 입력</div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" style="opacity:.4;cursor:pointer" onclick="closeSheet()"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </div>
-    <input id="sh-input" style="margin-top:11px" placeholder="예: 라면" onkeydown="if(event.key==='Enter'&&!event.isComposing)analyzeSheet()">
-    <div style="margin-top:6px;font-size:11px;color:rgba(0,0,0,.45)">메뉴 이름만 적어도 됩니다 · «편의점 샌드위치»처럼 적어도 돼요</div>
+    <input id="sh-input" style="margin-top:14px" placeholder="라면" onkeydown="if(event.key==='Enter'&&!event.isComposing)analyzeSheet()">
+    <div style="margin-top:8px;font-size:12px;color:var(--muted)">메뉴 이름만 적어도 됩니다</div>
     <div id="sh-recent-wrap">
-      <div style="margin-top:14px;font-size:10.5px;font-weight:700;letter-spacing:.06em;color:rgba(0,0,0,.42)">최근</div>
-      <div id="sh-recent" style="margin-top:7px;display:flex;gap:6px;flex-wrap:wrap"></div>
+      <div style="margin-top:18px;font-size:14px;font-weight:900">최근 내역</div>
+      <div id="sh-recent" style="margin-top:9px;display:flex;gap:7px;flex-wrap:wrap"></div>
     </div>
     <div id="sh-cand"></div>
-    <div id="sh-loading" style="display:none;margin-top:14px;background:#f4f4f4;border-radius:16px;padding:12px 14px;align-items:center;gap:10px">
-      <span data-av="28"></span>
+    <div id="sh-loading" style="display:none;margin-top:16px;background:var(--gray);border-radius:14px;padding:13px 15px;align-items:center;gap:11px">
+      <span data-av="30"></span>
       <div style="flex:1">
-        <div style="font-size:12.5px;font-weight:700">밀당이가 재료를 뜯어보는 중…</div>
-        <div style="font-size:10.5px;color:rgba(0,0,0,.5);margin-top:1px">실패하면 비슷한 메뉴 3개를 보여드려요</div>
-      </div>
-      <div style="display:flex;gap:4px">
-        <div style="width:6px;height:6px;border-radius:50%;background:#2b2b2b;animation:blinkDot 1.1s infinite"></div>
-        <div style="width:6px;height:6px;border-radius:50%;background:#2b2b2b;animation:blinkDot 1.1s infinite .18s"></div>
-        <div style="width:6px;height:6px;border-radius:50%;background:#2b2b2b;animation:blinkDot 1.1s infinite .36s"></div>
+        <div style="font-size:13.5px;font-weight:900">밀당이가 재료를 뜯어보는 중</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:1px">보통 2초면 끝나요</div>
       </div>
     </div>
-    <button class="pill-btn" style="margin-top:12px;width:100%;padding:15px;font-size:16px" onclick="analyzeSheet()">분석하기</button>
-    <div style="margin-top:8px;text-align:center;font-size:10.5px;color:rgba(0,0,0,.4)">분석이 끝나면 <strong style="color:rgba(0,0,0,.6)">불러온 화면으로 돌아가</strong> 항목이 생깁니다</div>
+    <button class="pill-btn" style="margin-top:16px;width:100%" onclick="analyzeSheet()">분석 하기</button>
   </div>
 </div>
 
 <!-- S5 · 밀당 대화 (풀스크린) -->
 <div class="ovl" id="haggle">
-  <div style="position:absolute;inset:0;background:#fdfdfd;display:flex;flex-direction:column">
-    <div style="padding:12px 18px;margin-top:44px;display:flex;align-items:center;gap:10px">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" style="opacity:.6;cursor:pointer" onclick="abandonHaggle()"><path d="M18 6L6 18M6 6l12 12"/></svg>
-      <span data-av="34"></span>
-      <div style="flex:1">
-        <div style="font-size:15px;font-weight:900">밀당이</div>
-        <div style="font-size:11px;font-weight:700;color:rgba(0,0,0,.5)" id="h-turn">흥정 중 · 0/10턴</div>
-      </div>
-      <div class="disp" style="font-size:14px;border-radius:999px;padding:6px 13px;background:#ececec;color:#333" id="h-bal"></div>
+  <div style="position:absolute;inset:0;background:#fff;display:flex;flex-direction:column">
+    <div style="padding:0 22px;margin-top:44px;display:flex;align-items:center;gap:10px">
+      <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+      <div style="font-size:12px;font-weight:700;color:var(--muted)" id="h-turn"></div>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" style="opacity:.45;cursor:pointer" onclick="abandonHaggle()"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </div>
-    <div style="padding:0 18px 10px;border-bottom:1px solid rgba(0,0,0,.08)">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <div style="display:inline-flex;align-items:center;gap:6px;background:#ececec;border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:700;color:rgba(0,0,0,.5)">
-          <span style="font-size:10px;opacity:.7">원래</span><span style="text-decoration:line-through" id="h-orig"></span>
-        </div>
-        <svg width="14" height="12" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" style="opacity:.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-        <div style="display:inline-flex;align-items:center;gap:6px;background:#2b2b2b;color:#fff;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:700">
-          <span style="font-size:10px;opacity:.65">합의</span><span id="h-agreed">아직 없음</span>
-        </div>
-      </div>
-      <div style="margin-top:5px;font-size:10.5px;color:rgba(0,0,0,.42)"><strong style="color:rgba(0,0,0,.6)">메뉴는 안 바꿉니다. 양·구성만 조정</strong> · ✕로 나가면 원래값 그대로</div>
+    <div style="padding:12px 22px 0;font-size:13px;color:var(--muted)">밀당이와 대화를 시작해보세요</div>
+    <div style="padding:10px 22px 0;display:flex;align-items:center;gap:8px">
+      <div style="height:1px;flex:1;background:var(--y)"></div>
+      <span style="font-size:11.5px;font-weight:800;color:var(--y-deep)">새로운 메세지</span>
+      <div style="height:1px;flex:1;background:var(--y)"></div>
+    </div>
+    <div style="padding:6px 22px 0;display:none;font-size:11.5px;color:var(--muted)" id="h-meta">
+      원래 <span id="h-orig"></span> · 합의 <span id="h-agreed"></span> · 잔액 <span id="h-bal"></span>
     </div>
     <div id="h-chat"></div>
-    <div style="padding:10px 16px 26px;border-top:1px solid rgba(0,0,0,.08)">
-      <div id="h-inputzone" style="display:flex;flex-direction:column;gap:8px">
-        <div id="h-chips" style="display:flex;gap:6px;flex-wrap:wrap"></div>
-        <div style="display:flex;gap:8px">
-          <input id="h-text" placeholder="얼마나 줄일지 말해보세요" onkeydown="if(event.key==='Enter')sendHaggle()"
-            style="flex:1;background:#f0f0f0;border:none;border-radius:999px;padding:13px 17px;font-size:14px;font-family:inherit;outline:none">
-          <button onclick="sendHaggle()" style="width:46px;height:46px;background:#2b2b2b;border:none;border-radius:50%;display:flex;align-items:center;justify-content:center;flex:none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M5 12l7-7 7 7"/></svg></button>
-        </div>
+    <div style="padding:12px 22px 26px;border-top:1px solid var(--line)">
+      <div id="h-inputzone" style="display:flex;flex-direction:column;gap:10px">
+        <div style="font-size:14px;font-weight:900">최근 내역</div>
+        <div id="h-chips" style="display:flex;gap:7px;flex-wrap:wrap"></div>
+        <input id="h-text" placeholder="얼마나 줄일지 말해보세요" onkeydown="if(event.key==='Enter'&&!event.isComposing)sendHaggle()"
+          style="width:100%;background:var(--gray);border:none;border-radius:12px;padding:15px 16px;font-size:14px;font-family:inherit;outline:none">
       </div>
-      <div id="h-over" style="display:none;text-align:center;font-size:12px;font-weight:700;color:#333;background:#ececec;border-radius:14px;padding:11px">10턴을 다 썼어요 — 지금 값으로 정리하시죠</div>
-      <button class="pill-btn" style="margin-top:9px;width:100%;padding:15px;font-size:16px" id="h-close" onclick="closeHaggle()">대화 종료</button>
-      <div style="margin-top:6px;text-align:center;font-size:10.5px;color:rgba(0,0,0,.4)">값만 바뀝니다 · 차감은 돌아가서 «기록하기»로</div>
+      <div id="h-over" style="display:none;text-align:center;font-size:13px;font-weight:800;background:var(--gray);border-radius:12px;padding:13px;margin-top:8px">10턴을 다 썼어요 — 지금 값으로 정리하시죠</div>
+      <button class="pill-btn" style="margin-top:10px;width:100%" id="h-close" onclick="closeHaggle()">대화 종료</button>
     </div>
   </div>
 </div>
@@ -602,7 +597,7 @@ let token = null, refreshToken = null, challengeId = null, reportChallengeId = n
     challenge = null, budget = null;
 let currentPeriod = null, currentPrice = 0, planData = null, selectedPlan = null;
 let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3' };
-let selectedWeekday = 'FRI', sheetCtx = null, scanId = null, scanData = null;
+let selectedPromiseDate = null, sheetCtx = null, scanId = null, scanData = null;
 let haggleId = null, haggleTarget = null, haggleBack = 'meal', haggleAgreed = null;
 let nextChallengeRec = null, reportData = null;
 
@@ -724,18 +719,19 @@ async function loadPlans() {
 }
 const PERIOD_LABEL = { W1: '1주', W2: '2주', W4: '4주' };
 function renderPlans() {
+  const BADGE = { W1: 'FREE', W2: 'PLUS', W4: 'PRO' };
   $('plan-list').innerHTML = planData.plans.map(p => {
     const on = selectedPlan && selectedPlan.period === p.period;
-    return `<div onclick="pickPlan('${p.period}')" style="cursor:pointer;position:relative;background:#fff;border:${on ? '2.5px solid #2b2b2b' : '1.5px solid rgba(0,0,0,.12)'};border-radius:20px;padding:16px 18px;display:flex;align-items:center;gap:14px;${on ? 'box-shadow:0 3px 10px rgba(0,0,0,.12)' : ''}${p.available ? '' : ';opacity:.5'}">
-      <div class="disp" style="font-size:34px;color:${on ? '#2b2b2b' : 'rgba(0,0,0,.75)'};min-width:52px">${PERIOD_LABEL[p.period] || p.period}</div>
+    return `<div onclick="pickPlan('${p.period}')" class="card${on ? ' sel' : ''}" style="cursor:pointer;display:flex;align-items:center;gap:14px;padding:18px${p.available ? '' : ';opacity:.5'}">
+      <div class="disp" style="font-size:26px;min-width:44px">${PERIOD_LABEL[p.period] || p.period}</div>
       <div style="flex:1">
-        <div style="font-weight:700;font-size:15px">${p.title}</div>
-        <div style="font-size:12.5px;color:rgba(0,0,0,.55)">${p.available ? p.subtitle : p.unavailableReason}</div>
+        <div style="font-size:15px;font-weight:900">${p.title}</div>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:2px">${p.available ? p.subtitle : p.unavailableReason}</div>
       </div>
-      <div class="disp" style="font-size:15px;${p.priceKrw === 0 ? 'background:#e9e9e9;color:#333;border-radius:999px;padding:5px 12px' : 'color:rgba(0,0,0,.6)'}">${p.priceKrw === 0 ? '무료' : p.priceKrw.toLocaleString() + '원'}</div>
+      <div class="tagpill">${BADGE[p.period] || ''}</div>
     </div>`;
   }).join('');
-  $('plan-cta').textContent = selectedPlan ? `${PERIOD_LABEL[selectedPlan.period]} 챌린지로 시작` : '시작';
+  $('plan-cta').textContent = '결제 하기';
 }
 function pickPlan(period) {
   const p = planData.plans.find(x => x.period === period);
@@ -743,12 +739,26 @@ function pickPlan(period) {
   selectedPlan = p; renderPlans();
 }
 async function startPlan() {
-  if (!selectedPlan) return;
+  if (!selectedPlan) { toast('기간을 먼저 골라주세요'); return; }
   currentPeriod = selectedPlan.period; currentPrice = selectedPlan.priceKrw;
   if (currentPrice > 0) {
-    $('pay-period').textContent = PERIOD_LABEL[selectedPlan.period] || selectedPlan.period;
+    const BADGE = { W2: 'PLUS', W4: 'PRO' };
+    const label = PERIOD_LABEL[selectedPlan.period] || selectedPlan.period;
+    const chats = selectedPlan.period === 'W4' ? '무제한' : '40회';
+    $('pay-head').innerHTML = `${label} 밀당으로<br>시작 해볼까요?`;
+    $('pay-desc').innerHTML = `${label} 동안 기록하고<br>나의 밀가루 섭취 패턴을 확인해요.`;
+    $('pay-period').textContent = `${label} 챌린지`;
+    $('pay-badge').textContent = BADGE[selectedPlan.period] || '';
     $('pay-title').textContent = selectedPlan.title;
+    $('pay-sub').textContent = `${label} 동안 예산 관리해요`;
+    // 화면의 기능 표 — 지금은 프론트가 만든다 (/plans에 features가 없다)
+    $('pay-feats').innerHTML = [
+      ['이용기간', label], ['주차별 기록・피드백', '포함'],
+      ['최종 리포트 제공', '포함'], ['AI 밀당 대화', chats],
+    ].map(([k, v]) => `<div style="display:flex;align-items:center;font-size:13px">
+        <div style="flex:1;color:var(--muted)">${k}</div><div style="font-weight:800">${v}</div></div>`).join('');
     $('pay-price').textContent = currentPrice.toLocaleString() + '원';
+    $('pay-cta').textContent = `${currentPrice.toLocaleString()}원 결제하고 시작 하기`;
     nav('pay'); return;
   }
   const r = await call('POST', '/challenges', { period: currentPeriod, paymentId: null });
@@ -770,12 +780,14 @@ const SURVEY_OPTS = ['0-1', '2-3', '4+'];
 const SURVEY_LABELS = { '0-1': '0–1', '2-3': '2–3', '4+': '4회+' };
 function initSurvey() {
   $('est-box').style.display = 'none';
-  $('survey-rows').innerHTML = SURVEY_QS.map(q =>
-    `<div style="display:flex;align-items:center;gap:10px;background:#fff;border-radius:14px;padding:9px 12px;border:1px solid rgba(0,0,0,.08)">
-      <div style="flex:1;font-size:13.5px;font-weight:700">${q.label} <span style="font-weight:400;color:rgba(0,0,0,.5)">주</span></div>
-      <div class="seg3" id="sv-${q.key}">` +
+  $('survey-rows').innerHTML =
+    `<div><div style="font-size:14px;font-weight:800">평소 일주일에 얼마나 자주 드세요?</div>
+       <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">` +
+    SURVEY_QS.map(q => `<div style="display:flex;align-items:center;gap:10px">
+        <div style="width:62px;font-size:13.5px;font-weight:800">${q.label}</div>
+        <div class="seg3" style="flex:1" id="sv-${q.key}">` +
       SURVEY_OPTS.map(o => `<button class="${surveyPick[q.key] === o ? 'on' : ''}" onclick="pickSurvey('${q.key}','${o}')">${SURVEY_LABELS[o]}</button>`).join('') +
-      `</div></div>`).join('');
+      `</div></div>`).join('') + `</div></div>`;
 }
 function pickSurvey(k, v) {
   surveyPick[k] = v;
@@ -797,15 +809,21 @@ async function estimate() {
   $('est-options').innerHTML = order.map(k => {
     const o = r.options.find(x => x.key === k); if (!o) return '';
     return k === 'AS_IS'
-      ? `<button class="pill-btn" style="flex:1.3;padding:13px 4px;font-size:15px" onclick="confirmBudget('${o.key}',${o.budget})">이대로 ${o.budget}</button>`
-      : `<button class="ghost-btn" style="flex:1" onclick="confirmBudget('${o.key}',${o.budget})">${names[k]}<br><span class="disp" style="font-size:14px">${o.budget}</span></button>`;
+      ? `<button class="pill-btn" onclick="confirmBudget('${o.key}',${o.budget})">이대로 ${o.budget}밀로 시작</button>`
+      : `<button class="ghost-btn" onclick="confirmBudget('${o.key}',${o.budget})">${names[k]} · ${o.budget}밀</button>`;
   }).join('');
   $('est-box').style.display = 'block';
 }
 async function confirmBudget(key, weekly) {
-  const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: surveyPick, optionKey: key, budget: weekly });
+  const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: surveyPick, optionKey: key, budget: weekly, weightKg: startWeight() });
   nav('dash');
   if (r.startTip) toast(r.startTip.text);
+}
+
+// 설문의 「체중은 어떻게 되나요?」 — 비워두면 보내지 않는다 (선택 항목)
+function startWeight() {
+  const v = parseFloat(($('sv-weight') || {}).value);
+  return Number.isFinite(v) ? v : null;
 }
 
 // ---------- S3 · 대시보드 ----------
@@ -899,37 +917,32 @@ async function pickRecordDate() {
 function confPill(c) { return `<div class="tagpill">${CONF[c] || c}</div>`; }
 function itemCard(i, ctx) {
   const eff = i.effective.points;
-  const badge = `<div class="price-badge"><span class="n">${eff}</span>${!i.adjusted && i.original.pm ? `<span class="pm"> ±${i.original.pm}</span>` : ''}</div>`;
-  const title = i.adjusted
-    ? `${i.original.name} <span style="font-weight:400;color:rgba(0,0,0,.4);text-decoration:line-through">${i.original.unit} ${i.original.points}</span> <span style="color:rgba(0,0,0,.35)">→</span> ${i.adjusted.label}`
-    : `${i.original.name} <span style="color:rgba(0,0,0,.35);font-weight:400">— ${i.original.unit}</span>`;
-  const statePill = i.status === 'HAGGLED' ? `<div class="tagpill dark">흥정 완료</div>`
-    : i.status === 'PREPAID' ? `<div class="tagpill dark">선차감됨</div>` : confPill(i.original.confidence);
-  const verb = ctx === 'promise' ? '선차감하면' : '기록하면';
-  const wouldBe = budget ? ` <span style="color:rgba(0,0,0,.4)">(원래대로였다면 ${budget.balance - i.original.points})</span>` : '';
-  const note = `${verb} 잔액 <strong style="color:#222">${budget ? budget.balance : '?'} → ${i.effective.balanceAfter}</strong>${i.adjusted ? wouldBe : ''}`;
+  const badge = `<div class="price-badge"><span class="n">${eff}</span></div>`;
+  // 「라면  1봉지 80」 — 메뉴명 옆에 원래 단위·값을 작게 (확정 193:1830)
+  const sub = `<span style="font-size:12px;font-weight:600;color:var(--muted)">${i.original.unit} ${i.original.points}</span>`;
+  const basis = i.adjusted ? (i.adjusted.basis || i.adjusted.label) : (i.original.basis || '');
+  const verb = ctx === 'promise' ? '차감하면' : '기록하면';
+  const wouldBe = i.adjusted && budget ? ` <span style="color:var(--muted)">(원래대로 였다면 ${budget.balance - i.original.points})</span>` : '';
+  const note = `${verb} 잔액 <strong>${budget ? budget.balance : '?'} → ${i.effective.balanceAfter}</strong>${wouldBe}`;
   let actions = '';
   if (i.status === 'PREPAID') actions = '';
   else if (ctx === 'promise') actions = `<div class="card-actions">
-      <button class="go" onclick="openHaggle('${i.id}','PROMISE','promise')">밀당하기</button>
-      <button class="alt" onclick="prepayItem('${i.id}')">선차감하기</button></div>`;
-  else if (i.status === 'HAGGLED') actions = `<div class="card-actions">
-      <button class="alt" onclick="openHaggle('${i.id}','FREE','meal')">↺ 다시 밀당</button>
-      <button class="go" onclick="recordItem('${i.id}').then(loadMeal)">기록하기</button></div>`;
+      <button class="alt" onclick="openHaggle('${i.id}','PROMISE','promise')">밀당 하기</button>
+      <button class="go" onclick="prepayItem('${i.id}')">차감 하기</button></div>`;
   else actions = `<div class="card-actions">
-      <button class="go" onclick="openHaggle('${i.id}','FREE','meal')">밀당하기</button>
-      <button class="alt" onclick="recordItem('${i.id}').then(loadMeal)">기록하기</button></div>`;
-  // 확정 전 항목은 목록에서 지울 수 있다 (DELETE /items/{id})
+      <button class="alt" onclick="openHaggle('${i.id}','FREE','meal')">${i.status === 'HAGGLED' ? '다시 밀당' : '밀당 하기'}</button>
+      <button class="go" onclick="recordItem('${i.id}').then(loadMeal)">기록 하기</button></div>`;
   const removable = i.status !== 'PREPAID' && i.status !== 'RECORDED';
   const removeBtn = removable
-    ? `<button title="목록에서 빼기" onclick="removeItem('${i.id}','${ctx}')" style="background:none;border:none;cursor:pointer;font-size:15px;line-height:1;color:rgba(0,0,0,.3);padding:2px 4px">✕</button>`
+    ? `<button title="목록에서 빼기" onclick="removeItem('${i.id}','${ctx}')" style="background:none;border:none;cursor:pointer;font-size:15px;color:var(--muted);padding:2px 4px">✕</button>`
     : '';
   return `<div class="item-card${i.status === 'HAGGLED' ? ' hl' : ''}">
-    <div style="display:flex;align-items:center;gap:11px">${badge}
-      <div style="flex:1"><div style="font-size:14.5px;font-weight:900">${title}</div>
-        <div style="font-size:11px;color:rgba(0,0,0,.55);margin-top:1px">${i.adjusted ? (i.adjusted.basis || '흥정으로 조정된 구성') : (i.original.basis || '')}</div></div>
-      ${statePill}${removeBtn}</div>
-    <div style="margin-top:9px;padding-top:9px;border-top:1px solid rgba(0,0,0,.07);font-size:11.5px;color:rgba(0,0,0,.6)">${note}</div>
+    <div style="display:flex;align-items:center;gap:13px">${badge}
+      <div style="flex:1">
+        <div style="font-size:16px;font-weight:900">${i.original.name} ${sub}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${basis}</div>
+      </div>${removeBtn}</div>
+    <div style="margin-top:11px;font-size:12.5px;color:var(--muted)">${note}</div>
     ${actions}</div>`;
 }
 async function recordItem(id) {
@@ -966,16 +979,28 @@ async function fromPreset(pid) { await call('POST', '/items', { kind: 'MEAL', pr
 
 // ---------- S3a · 약속 ----------
 const WD = [['MON','월'],['TUE','화'],['WED','수'],['THU','목'],['FRI','금'],['SAT','토'],['SUN','일']];
-function renderWeekdays() {
-  $('p-weekdays').innerHTML = WD.map(([k, l]) =>
-    `<div onclick="selectedWeekday='${k}';renderWeekdays()" style="flex:1;text-align:center;font-size:12.5px;padding:8px 0;border-radius:999px;cursor:pointer;${selectedWeekday === k ? 'background:#2b2b2b;color:#fff;font-weight:700' : 'background:#ececec;color:rgba(0,0,0,.55)'}">${l}</div>`).join('');
+// 확정 화면이 「언제 예요? · 날짜 입력」이라 요일 버튼 대신 날짜를 고른다
+function renderPromiseDates() {
+  const sel = $('p-date');
+  if (!sel || !challenge) return;
+  const start = new Date(challenge.startedAt || Date.now());
+  const opts = [];
+  for (let i = 0; i < (challenge.totalDays || 7); i++) {
+    const d = new Date(start.getTime() + i * 86400000);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const wd = ['일', '월', '화', '수', '목', '금', '토'][d.getDay()];
+    opts.push(`<option value="${iso}">${iso.replace(/-/g, '.')} (${wd})</option>`);
+  }
+  sel.innerHTML = opts.join('');
+  selectedPromiseDate = sel.value;
+  sel.onchange = () => { selectedPromiseDate = sel.value; };
 }
 async function loadPromise() {
-  renderWeekdays();
   if (!budget) { try { const c = await call('GET', '/challenges/current'); budget = c.budget; challenge = c.challenge; } catch (e) {} }
+  renderPromiseDates();
   const r = await call('GET', '/items?kind=PROMISE&status=PENDING,HAGGLED,PREPAID');
   $('p-items').innerHTML = r.items.map(i => itemCard(i, 'promise')).join('')
-    || `<div style="text-align:center;font-size:12px;color:rgba(0,0,0,.4);padding:12px">약속 없음</div>`;
+    || `<div style="text-align:center;font-size:13px;color:var(--muted);padding:16px">아직 잡아둔 약속이 없어요</div>`;
 }
 
 // ---------- 3c · 미니 입력창 ----------
@@ -1003,7 +1028,8 @@ async function analyzeSheet() {
   try {
     const a = await call('POST', '/analyses/text', { query: q, context: { challengeId, kind: sheetCtx.kind } });
     const body = { kind: sheetCtx.kind, analysisId: a.id };
-    if (sheetCtx.kind === 'PROMISE') body.weekday = selectedWeekday;
+    // 확정 화면이 날짜를 고르게 한다 — 요일은 서버가 날짜에서 뽑는다
+    if (sheetCtx.kind === 'PROMISE') body.promiseDate = selectedPromiseDate;
     await call('POST', '/items', body);
     closeSheet(); nav(sheetCtx.backTo);
   } catch (e) {
@@ -1036,39 +1062,32 @@ function renderScan() {
   const r = scanData;
   $('sc-place').textContent = r.place || '(상호 미인식)';
   const rec = r.recommendation;
-  const mealsLeft = challenge ? Math.max(1, challenge.totalDays - challenge.dayIndex) : null;
   if (rec) {
     const m = r.menus.find(x => x.id === rec.menuId);
-    $('sc-rec').innerHTML = `<div style="margin-top:14px;background:linear-gradient(135deg,#f4f4f4,#e9e9e9);border:1.5px solid #c9c9c9;border-radius:20px;padding:15px 16px;box-shadow:0 3px 10px rgba(0,0,0,.1)">
-      <div style="display:flex;align-items:center;gap:8px">${avatar(30)}
-        <div style="font-size:11.5px;font-weight:700;color:#333">밀당이의 추천 · 잔액 ${budget ? budget.balance : '?'}${mealsLeft ? ' · 앞으로 ' + mealsLeft + '끼' : ''}</div></div>
-      <div style="margin-top:8px;display:flex;align-items:baseline;gap:8px">
-        <div style="font-size:19px;font-weight:900">${m ? m.name : ''}</div>
-        <div class="disp" style="font-size:24px;color:#2b2b2b">${m && m.item ? m.item.points : rec.points}</div>
-        ${m && m.item && m.item.haggled ? `<div style="font-size:11.5px;color:rgba(0,0,0,.5)">밀당으로 ${rec.points} → ${m.item.points}</div>` : ''}</div>
-      ${rec.comment ? `<p style="margin:5px 0 0;font-size:12.5px;line-height:1.5;color:rgba(0,0,0,.7)">${rec.comment}</p>` : ''}
-      <div style="margin-top:10px;display:flex;gap:7px">
-        <button onclick="scanRecord('${rec.menuId}')" style="flex:1;background:#2b2b2b;border:none;color:#fff;border-radius:999px;padding:10px;font-size:12.5px;font-weight:700">탭해서 ${m && m.item ? m.item.points : rec.points} 차감</button>
-        <button onclick="scanHaggle('${rec.menuId}')" style="flex:1;background:#fff;border:1.5px solid #2b2b2b;border-radius:999px;padding:10px;font-size:12.5px;font-weight:700">밀당이랑 더 얘기하기 →</button>
+    const shown = m && m.item ? m.item.points : rec.points;
+    $('sc-rec').innerHTML = `<div class="card sel" style="margin-top:18px">
+      <div style="font-size:12.5px;font-weight:700;color:var(--muted)">밀당이의 추천・잔액 ${budget ? budget.balance : '?'}</div>
+      <div class="disp" style="margin-top:6px;font-size:24px">${m ? m.name : ''} ${shown}</div>
+      ${rec.comment ? `<p style="margin:10px 0 0;font-size:13px;line-height:1.6">“${rec.comment}”</p>` : ''}
+      <div class="card-actions">
+        <button style="flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;font-size:14.5px;font-weight:800" onclick="scanRecord('${rec.menuId}')">${shown} 차감 하기</button>
+        <button class="go" onclick="scanHaggle('${rec.menuId}')">채팅 하기</button>
       </div></div>`;
   } else $('sc-rec').innerHTML = '';
   $('sc-menus').innerHTML = r.menus.map(m => {
     const isRec = rec && rec.menuId === m.id;
-    // 흥정을 마친 행은 합의값으로 보여준다 — 서버가 menus[].item으로 알려준다
     const hag = m.item && m.item.haggled ? m.item : null;
     const shown = hag ? hag.points : m.points;
-    return `<div style="background:#fff;border-radius:15px;padding:11px 13px;display:flex;align-items:center;gap:12px;border:${hag ? '1.5px solid #2b2b2b' : isRec ? '1.5px solid #c9c9c9' : '1px solid rgba(0,0,0,.07)'}">
-      <div onclick="editMenu('${m.id}',this)" title="탭해서 수정" style="cursor:pointer;min-width:56px;text-align:center;background:${shown >= 60 ? '#1f1f1f' : shown >= 30 ? '#bbb' : '#ececec'};color:${shown >= 60 ? '#fff' : '#222'};border-radius:11px;padding:7px 6px">
-        <span class="disp" style="font-size:21px;line-height:1">${shown}</span>${!hag && m.pm ? `<span style="font-size:10px;opacity:.7"> ±${m.pm}</span>` : ''}</div>
-      <div style="flex:1"><div style="font-size:14.5px;font-weight:700">${m.name}${isRec ? ' <span style="font-size:10.5px;color:#2b2b2b;font-weight:700">추천</span>' : ''}${m.edited ? ' ✎' : ''}
-        ${hag ? `<span style="font-weight:400;color:rgba(0,0,0,.4);text-decoration:line-through">${m.points}</span> <span style="color:rgba(0,0,0,.35)">→</span> ${hag.label}` : ''}</div>
-        <div style="font-size:11.5px;color:rgba(0,0,0,.55)">${hag ? '밀당으로 합의한 값' : (m.basis || '')}</div></div>
-      <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-        <div style="font-size:10.5px;font-weight:700;color:#333">${hag ? '합의' : (CONF[m.confidence] || m.confidence)}</div>
-        <div style="display:flex;gap:4px">
-          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanHaggle('${m.id}')">${hag ? '다시 밀당' : '밀당'}</button>
-          <button class="chip" style="padding:4px 9px;font-size:10.5px" onclick="scanRecord('${m.id}')">${hag ? `${shown} 기록` : '기록'}</button>
-        </div></div></div>`;
+    return `<div class="item-card${hag || isRec ? ' hl' : ''}" style="display:flex;align-items:center;gap:14px;padding:14px 16px">
+      <div class="disp" onclick="editMenu('${m.id}',this)" title="탭해서 수정" style="cursor:pointer;min-width:34px;text-align:center;font-size:22px">${shown}</div>
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:900">${m.name}${m.edited ? ' ✎' : ''}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${hag ? '밀당으로 합의한 값' : (m.basis || '')}</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <button class="chip" style="padding:6px 10px;font-size:11.5px" onclick="scanHaggle('${m.id}')">밀당</button>
+        <button class="chip" style="padding:6px 10px;font-size:11.5px;background:var(--y)" onclick="scanRecord('${m.id}')">기록</button>
+      </div></div>`;
   }).join('');
 }
 function editMenu(menuId, el) {
