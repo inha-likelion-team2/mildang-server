@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (8) | **확정 와이어프레임 갱신 반영** — `current`에 `progress` 신설(진행률 체크박스), `GET /items?date=` 정렬을 **「최근 입력한 순」**으로 바꾸고 `weights`·`progress` 동봉 |
 | 2026-08-17 (7) | **카카오 로그인 실검증** — prod에서 `idToken`을 카카오 JWKS로 검증한다(서명·`iss`·`aud`·`exp`). 위조·타 앱·타 발급자 토큰은 `TOKEN_INVALID`, 만료는 `TOKEN_EXPIRED`. **demo/local은 기존대로 통과**(문자열이 곧 계정) |
 | 2026-08-17 (6) | **기록 보기 화면** — `GET /items`에 `date` 필터 추가(주면 그날치만 + `day{date,count,totalPoints}`), 캘린더용 **`GET /items/dates` 신설**(그 달에 기록이 있는 날) |
 | 2026-08-17 (5) | **체중 기록 신설** — 컨디션 체크인에서 함께 받는다(`checkins/today`의 `weightKg`, 선택). — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
@@ -355,7 +356,11 @@
                       "weekday": "FRI", "note": "사전 결재 · 예산에서 미리 빼뒀어요" } ],
   "checkin": { "doneToday": false, "dueAt": "2026-08-15T13:00:00Z" },
   "expiredConfirm": [ { "id": "itm_...", "logicalDate": "2026-08-14", "menuLabel": "라면 반봉지",
-                        "points": 40, "question": "8월 14일에 40으로 합의한 라면, 드셨어요?" } ]
+                        "points": 40, "question": "8월 14일에 40으로 합의한 라면, 드셨어요?" } ],
+  "weights": [ { "date": "2026-08-15", "dayIndex": 1, "weightKg": 58.0 } ],
+  "progress": { "dayIndex": 4, "totalDays": 7,
+                "days": [ { "dayIndex": 1, "date": "2026-08-14",
+                            "checkin": true, "recorded": true, "future": false } ] }
 }
 ```
 
@@ -369,6 +374,10 @@
 | `weekly` | **항상 `null`입니다** (총액 단일 모델이라 주차 개념이 없음) |
 | `tip` | AI 생성, 일 1회. **생성 실패 시 `null`** → 영역을 숨기세요 |
 | `today` | **오늘 먹은 것** — 아래 참조 |
+| `weights` | 체중 그래프 재료. 기록한 날만 날짜순. 없으면 `[]` |
+| `progress` | 화면 「1주 챌린지 진행률」의 **체크박스 N칸**. `days`는 시작일부터 `totalDays`만큼 **빠짐없이** 옵니다 |
+| `progress.days[].checkin` / `.recorded` | 그날 **컨디션 체크인을 했는지** / **기록을 남겼는지**. 체크박스를 어느 쪽으로 칠할지는 화면이 정하세요 — 그래서 둘 다 줍니다 |
+| `progress.days[].future` | 아직 오지 않은 날. 체크박스를 비워두면 됩니다 |
 | `prepaidItems[]` | 선차감된 약속 카드 (전체) |
 | `checkin.doneToday` | `false`면 체크인 버튼에 뱃지. `dueAt`은 오늘 22:00 KST |
 | `weights[]` | 체중 기록 그래프 재료 — `{date, dayIndex, weightKg}`, 날짜 오름차순. 기록이 없으면 `[]` |
@@ -468,14 +477,17 @@
 ```json
 { "items": [ /* 항목 객체 */ ],
   "summary": { "count": 3, "totalPoints": 55, "balanceAfterAll": 170 },
-  "day": { "date": "2026-08-16", "count": 2, "totalPoints": 125 }   // date를 줬을 때만
+  "day": { "date": "2026-08-16", "count": 2, "totalPoints": 125 },  // 이하 date를 줬을 때만
+  "weights": [ /* current.weights 와 동일 */ ],
+  "progress": { /* current.progress 와 동일 */ }
 }
 ```
 
 - ⚠ **`summary`는 쿼리 필터와 무관하게 미기록 전체(`PENDING`·`HAGGLED`·`EXPIRED`) 고정값**입니다. 필터를 걸어도 값이 안 바뀝니다. 화면 상단의 「총 5건」은 `summary`가 아니라 **`day`** 를 쓰세요.
-- **`day`는 `date`를 줬을 때만** 응답에 들어갑니다(안 주면 키 자체가 없음). `day.totalPoints`는 그날 항목들의 `effective.points` 합입니다.
+- **`day`·`weights`·`progress`는 `date`를 줬을 때만** 응답에 들어갑니다(안 주면 키 자체가 없음). `day.totalPoints`는 그날 항목들의 `effective.points` 합입니다.
+- **`weights`·`progress`는 대시보드(`GET /challenges/current`)의 같은 필드와 같은 값**입니다. 「기록 보기」 화면이 목록·체중 그래프·진행률을 한 화면에 그려서 **한 번의 호출로 끝나게** 함께 실어 보냅니다.
 - 기록이 없는 날도 **200**입니다 — `items: []`, `day.count: 0` (404 아님).
-- 정렬: 기본은 `createdAt` 내림차순(최신 먼저). **`date`를 주면 `recordedAt` 오름차순**(먹은 순서)으로 바뀝니다 — 하루 안에서는 시간순이 자연스러워서입니다.
+- 정렬: 기본은 `createdAt` 내림차순(최신 먼저). **`date`를 줘도 최신 먼저**입니다 — 화면 라벨 「최근 입력한 순」에 맞춘 것으로, 확정 전 항목은 `recordedAt`이 없어 `createdAt`으로 대신합니다.
 - 날짜 기준은 **05:00 KST 경계**(`logicalDate`)입니다. 새벽 3시에 먹은 라면은 **전날** 목록에 들어갑니다.
 
 ### `GET /items/dates?month=` → 200
