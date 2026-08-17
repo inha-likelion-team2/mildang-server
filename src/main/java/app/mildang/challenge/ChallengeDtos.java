@@ -77,7 +77,8 @@ public class ChallengeDtos {
                                   WeeklyView weekly, TipView tip, TodayView today,
                                   List<PrepaidItemView> prepaidItems,
                                   CheckinView checkin, List<ExpiredConfirmView> expiredConfirm,
-                                  List<app.mildang.weight.WeightDtos.WeightPoint> weights) {
+                                  List<app.mildang.weight.WeightDtos.WeightPoint> weights,
+                                  ProgressView progress) {
     }
 
     /** 오늘(05:00 경계) 기록된 것 — 메인 화면 "오늘 먹은 것" 블록. 비어 있으면 items=[] */
@@ -109,6 +110,17 @@ public class ChallengeDtos {
     }
 
     public record CheckinView(boolean doneToday, Instant dueAt) {
+    }
+
+    /**
+     * 화면 「1주 챌린지 진행률」의 체크박스 N개 — 시작일부터 총 일수만큼, 지난 날은 채운 여부가 들어간다.
+     * 체크인 기준인지 기록 기준인지는 화면이 정하도록 <b>둘 다</b> 준다.
+     */
+    public record ProgressView(int dayIndex, int totalDays, List<ProgressDay> days) {
+    }
+
+    /** future=true면 아직 오지 않은 날 — 체크박스를 비워두면 된다 */
+    public record ProgressDay(int dayIndex, String date, boolean checkin, boolean recorded, boolean future) {
     }
 
     public record ExpiredConfirmView(String id, String logicalDate, String menuLabel, int points, String question) {

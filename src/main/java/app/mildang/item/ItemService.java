@@ -46,13 +46,16 @@ public class ItemService {
     private final ChallengeService challengeService;
     private final AnalysisService analysisService;
     private final app.mildang.scan.ScanService scanService;
+    private final app.mildang.weight.WeightService weightService;
 
     public ItemService(ItemRepository itemRepository, ChallengeService challengeService,
-                       AnalysisService analysisService, app.mildang.scan.ScanService scanService) {
+                       AnalysisService analysisService, app.mildang.scan.ScanService scanService,
+                       @org.springframework.context.annotation.Lazy app.mildang.weight.WeightService weightService) {
         this.itemRepository = itemRepository;
         this.challengeService = challengeService;
         this.analysisService = analysisService;
         this.scanService = scanService;
+        this.weightService = weightService;
     }
 
     public PresetsResponse presets() {
@@ -191,12 +194,17 @@ public class ItemService {
                             challenge.getId(), day, statuses)
                     .stream()
                     .filter(i -> kind == null || i.getKind() == kind)
+                    // 화면 라벨이 「최근 입력한 순」 — 방금 넣은 것이 맨 위로 온다.
+                    // 확정 전 항목은 recordedAt이 없으니 만든 시각으로 대신한다.
+                    .sorted(java.util.Comparator.comparing(ItemService::enteredAt).reversed())
                     .limit(Math.min(limit, 50)).toList();
             return new ListResponse(
                     ofDay.stream().map(i -> view(i, challenge)).toList(),
                     unrecordedSummary(challenge),
                     new ItemDtos.DayView(day.toString(), ofDay.size(),
-                            ofDay.stream().mapToInt(Item::effectivePoints).sum()));
+                            ofDay.stream().mapToInt(Item::effectivePoints).sum()),
+                    weightService.series(challenge.getId()),
+                    challengeService.progress(challenge, Instant.now()));
         }
 
         List<Item> items = (kind == null
@@ -207,7 +215,12 @@ public class ItemService {
 
         return new ListResponse(
                 items.stream().map(i -> view(i, challenge)).toList(),
-                unrecordedSummary(challenge), null);
+                unrecordedSummary(challenge), null, null, null);
+    }
+
+    /** 「입력한 시각» — 확정된 건 기록 시각, 아직 확정 전이면 만든 시각 */
+    private static Instant enteredAt(Item item) {
+        return item.getRecordedAt() != null ? item.getRecordedAt() : item.getCreatedAt();
     }
 
     /** v1.3 §6.2: summary는 쿼리 필터와 무관하게 미기록(PENDING·HAGGLED·EXPIRED) 전체 — 고정값 */

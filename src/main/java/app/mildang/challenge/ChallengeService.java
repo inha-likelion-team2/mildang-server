@@ -35,6 +35,7 @@ import app.mildang.user.UserRepository;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Set;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -363,7 +364,35 @@ public class ChallengeService {
                 prepaid,
                 new CheckinView(doneToday, dueAt),
                 expiredConfirm,
-                weightService.series(challenge.getId()));
+                weightService.series(challenge.getId()),
+                progress(challenge, now));
+    }
+
+    /**
+     * 「1주 챌린지 진행률」 체크박스 — 시작일부터 총 일수만큼 한 칸씩.
+     * 체크인으로 칠할지 기록으로 칠할지는 화면이 정하도록 둘 다 담는다.
+     */
+    @Transactional(readOnly = true)
+    public ChallengeDtos.ProgressView progress(Challenge challenge, Instant now) {
+        LocalDate start = LogicalDate.of(challenge.getStartedAt());
+        LocalDate today = LogicalDate.of(now);
+        int total = challenge.getTotalDays();
+
+        Set<LocalDate> checkedIn = checkinRepository
+                .findByChallengeIdIn(List.of(challenge.getId())).stream()
+                .map(app.mildang.checkin.Checkin::getDate).collect(java.util.stream.Collectors.toSet());
+        Set<LocalDate> recorded = itemRepository
+                .findByChallengeIdAndStatusInOrderByCreatedAtDesc(
+                        challenge.getId(), List.of(ItemStatus.RECORDED)).stream()
+                .map(Item::getLogicalDate).collect(java.util.stream.Collectors.toSet());
+
+        List<ChallengeDtos.ProgressDay> days = new java.util.ArrayList<>(total);
+        for (int i = 0; i < total; i++) {
+            LocalDate date = start.plusDays(i);
+            days.add(new ChallengeDtos.ProgressDay(i + 1, date.toString(),
+                    checkedIn.contains(date), recorded.contains(date), date.isAfter(today)));
+        }
+        return new ChallengeDtos.ProgressView(dayIndex(challenge, now), total, days);
     }
 
     private static String menuLabel(Item item) {

@@ -2,6 +2,7 @@ package app.mildang.item;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -117,6 +118,50 @@ class RecordsByDateTest {
 
     @Test
     @Order(3)
+    @DisplayName("★ 목록은 「최근 입력한 순」 — 방금 넣은 것이 맨 위")
+    void newestFirst() throws Exception {
+        // setup에서 라면 → 식빵 순으로 넣었으니 식빵(빵)이 위에 와야 한다
+        mvc.perform(get("/items")
+                        .param("date", today)
+                        .param("status", "RECORDED")
+                        .header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].original.name").value("빵"))
+                .andExpect(jsonPath("$.items[1].original.name").value("라면"));
+    }
+
+    @Test
+    @Order(4)
+    @DisplayName("★ 기록 보기 한 화면에 필요한 것을 한 번에 준다 — 체중 그래프·진행률")
+    void carriesWeightsAndProgress() throws Exception {
+        mvc.perform(put("/weights/today")
+                        .header("Authorization", auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightKg\":54.0}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/items")
+                        .param("date", today)
+                        .param("status", "RECORDED")
+                        .header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weights.length()").value(1))
+                .andExpect(jsonPath("$.weights[0].weightKg").value(54.0))
+                // 1주 챌린지 = 체크박스 7칸
+                .andExpect(jsonPath("$.progress.totalDays").value(7))
+                .andExpect(jsonPath("$.progress.days.length()").value(7))
+                .andExpect(jsonPath("$.progress.days[0].dayIndex").value(1))
+                // 오늘 기록을 했으니 오늘 칸의 recorded는 true, 체크인은 아직 안 했다
+                .andExpect(jsonPath("$.progress.days[0].recorded").value(true))
+                .andExpect(jsonPath("$.progress.days[0].checkin").value(false))
+                .andExpect(jsonPath("$.progress.days[0].future").value(false))
+                // 아직 오지 않은 날은 비워둔다
+                .andExpect(jsonPath("$.progress.days[6].future").value(true))
+                .andExpect(jsonPath("$.progress.days[6].recorded").value(false));
+    }
+
+    @Test
+    @Order(5)
     @DisplayName("기록이 없는 날은 빈 목록 — 404가 아니다")
     void emptyDayIsNotAnError() throws Exception {
         String past = java.time.LocalDate.parse(today).minusDays(3).toString();
@@ -128,7 +173,7 @@ class RecordsByDateTest {
     }
 
     @Test
-    @Order(4)
+    @Order(6)
     @DisplayName("날짜를 안 주면 예전 그대로 — day 없이 전체 목록")
     void withoutDateNothingChanges() throws Exception {
         mvc.perform(get("/items").param("status", "RECORDED").header("Authorization", auth()))
@@ -139,7 +184,7 @@ class RecordsByDateTest {
     }
 
     @Test
-    @Order(5)
+    @Order(7)
     @DisplayName("★ 캘린더 — 그 달에 기록이 있는 날만 온다")
     void recordedDaysForCalendar() throws Exception {
         String month = today.substring(0, 7);
@@ -157,7 +202,7 @@ class RecordsByDateTest {
     }
 
     @Test
-    @Order(6)
+    @Order(8)
     @DisplayName("형식이 틀린 날짜는 400 — 안내 문구를 준다")
     void rejectsMalformed() throws Exception {
         mvc.perform(get("/items").param("date", "8/16").header("Authorization", auth()))

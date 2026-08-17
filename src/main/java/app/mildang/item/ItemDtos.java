@@ -36,9 +36,14 @@ public class ItemDtos {
                            Instant expiresAt, Instant recordedAt) {
     }
 
-    /** date 필터를 준 조회에만 day가 채워진다 (그날의 건수·합계). summary는 기존 의미 그대로 */
+    /**
+     * date 필터를 준 조회에만 day·weights·progress가 채워진다. summary는 기존 의미 그대로.
+     * 화면 「기록 보기」가 목록·체중 그래프·진행률을 한 화면에 같이 그려서 한 번에 실어 보낸다.
+     */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record ListResponse(List<ItemView> items, Summary summary, DayView day) {
+    public record ListResponse(List<ItemView> items, Summary summary, DayView day,
+                               List<app.mildang.weight.WeightDtos.WeightPoint> weights,
+                               app.mildang.challenge.ChallengeDtos.ProgressView progress) {
     }
 
     /** 화면 «기록 보기»의 「오늘 2026.08.16 · 총 5건」 */
