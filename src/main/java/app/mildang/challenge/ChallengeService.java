@@ -55,11 +55,13 @@ public class ChallengeService {
     private final ItemRepository itemRepository;
     private final CheckinRepository checkinRepository;
     private final app.mildang.tip.TipService tipService;
+    private final app.mildang.weight.WeightService weightService;
     private final boolean demoEnabled;
 
     public ChallengeService(ChallengeRepository challengeRepository, UserRepository userRepository,
                             PaymentRepository paymentRepository, ItemRepository itemRepository,
                             CheckinRepository checkinRepository, app.mildang.tip.TipService tipService,
+                            @org.springframework.context.annotation.Lazy app.mildang.weight.WeightService weightService,
                             MildangProps props) {
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
@@ -67,6 +69,7 @@ public class ChallengeService {
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
         this.tipService = tipService;
+        this.weightService = weightService;
         this.demoEnabled = props.demo().enabled();
     }
 
@@ -359,7 +362,8 @@ public class ChallengeService {
                 todayView,
                 prepaid,
                 new CheckinView(doneToday, dueAt),
-                expiredConfirm);
+                expiredConfirm,
+                weightService.series(challenge.getId()));
     }
 
     private static String menuLabel(Item item) {

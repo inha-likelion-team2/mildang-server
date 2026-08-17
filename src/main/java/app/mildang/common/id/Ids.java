@@ -7,7 +7,7 @@ public final class Ids {
 
     public enum Prefix {
         USER("usr"), CHALLENGE("chl"), ITEM("itm"), ANALYSIS("anl"),
-        HAGGLE("hgl"), CHECKIN("chk"), SCAN("scn"), PAYMENT("pay"), TIP("tip");
+        HAGGLE("hgl"), CHECKIN("chk"), SCAN("scn"), PAYMENT("pay"), TIP("tip"), WEIGHT("wgt");
 
         private final String code;
 

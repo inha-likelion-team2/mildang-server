@@ -76,7 +76,8 @@ public class ChallengeDtos {
     public record CurrentResponse(ChallengeView challenge, BudgetView budget, PaceView pace,
                                   WeeklyView weekly, TipView tip, TodayView today,
                                   List<PrepaidItemView> prepaidItems,
-                                  CheckinView checkin, List<ExpiredConfirmView> expiredConfirm) {
+                                  CheckinView checkin, List<ExpiredConfirmView> expiredConfirm,
+                                  List<app.mildang.weight.WeightDtos.WeightPoint> weights) {
     }
 
     /** 오늘(05:00 경계) 기록된 것 — 메인 화면 "오늘 먹은 것" 블록. 비어 있으면 items=[] */

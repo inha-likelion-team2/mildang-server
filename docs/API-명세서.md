@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (5) | **체중 기록 신설** — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
 | 2026-08-17 (4) | **`POST /scans/{id}/menus/{menuId}/comment` 신설** — 화면 4b에서 하단 메뉴를 탭하면 상단 메모가 그 메뉴로 바뀐다. 메뉴마다 코멘트를 따로 만든다 |
 | 2026-08-17 (3) | **설문 2문항 추가** — `survey.portion`(한 번 먹는 양, 예산에 0.7/1.0/1.3배) · `survey.situation`(가장 많이 먹는 상황, **예산엔 영향 없음** · AI용 저장). 둘 다 선택 |
 | 2026-08-17 (2) | **예산 화면을 확정 피그마(온보딩_03)에 맞춤** — estimate 응답에 `slider{min,max,step,recommended}` 신설, `POST /budget`이 **제안값 3개가 아니라 범위 안의 아무 값이나** 받고 `optionKey`는 선택으로, **`PATCH /challenges/{id}/budget` 신설**(나중에 조정) |
@@ -368,6 +369,7 @@
 | `today` | **오늘 먹은 것** — 아래 참조 |
 | `prepaidItems[]` | 선차감된 약속 카드 (전체) |
 | `checkin.doneToday` | `false`면 체크인 버튼에 뱃지. `dueAt`은 오늘 22:00 KST |
+| `weights[]` | 체중 기록 그래프 재료 — `{date, dayIndex, weightKg}`, 날짜 오름차순. 기록이 없으면 `[]` |
 | `expiredConfirm[]` | 어제 흥정만 하고 기록 안 한 항목, **최대 3건**. `question`을 그대로 띄우고 "드셨어요"→`record` / "안 먹었어요"→`DELETE` |
 
 **`today` 상세**
@@ -864,6 +866,38 @@
   "message": "접수 완료. 오늘 장부는 닫습니다 — 내일 봬요.",
   "checkinDays": { "answered": 4, "elapsed": 4, "total": 7 } }
 ```
+
+---
+
+## 9-1. 체중 (`/weights`)
+
+화면 3 대시보드의 «1일차 58kg · 2일차 55kg» 그래프.
+
+> **값만 남깁니다.** 예산·잔액·리포트 통계 어디에도 관여하지 않습니다. 나중에 리포트의 AI 분석이 쓰기 위해 저장해두는 것입니다 (팀 결정 2026-08-17).
+
+### `PUT /weights/today` → 200 — 오늘 체중
+
+```json
+// 요청
+{ "weightKg": 58.0 }
+```
+
+- **하루 한 건**입니다. 같은 날 다시 보내면 덮어씁니다(체크인과 같은 규칙).
+- kg, 소수점 한 자리로 반올림합니다. **20.0~300.0** 범위를 벗어나면 400(오타로 봅니다).
+
+```json
+// 응답
+{
+  "today": { "date": "2026-08-17", "dayIndex": 1, "weightKg": 58.0 },
+  "series": [ { "date": "2026-08-17", "dayIndex": 1, "weightKg": 58.0 } ]
+}
+```
+
+### `GET /weights` → 200
+
+같은 구조입니다. 오늘 기록이 없으면 `today`가 `null`이고 `series`만 옵니다.
+
+- 그래프만 그릴 거면 **따로 부르지 않아도 됩니다** — `GET /challenges/current`의 `weights[]`에 같은 시리즈가 들어 있습니다.
 
 ---
 
