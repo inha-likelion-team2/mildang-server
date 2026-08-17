@@ -17,7 +17,9 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.datasource.username=sa",
         "spring.datasource.password=",
         "spring.jpa.hibernate.ddl-auto=create-drop",
-        "mildang.jwt.secret=test-secret-key-needs-32-bytes-min!!"
+        "mildang.jwt.secret=test-secret-key-needs-32-bytes-min!!",
+        // prod는 카카오 앱 키가 없으면 기동을 거부한다 (ProdKakaoVerifier) — 여기선 컨텍스트만 필요
+        "mildang.kakao.app-key=test-app-key"
 })
 @AutoConfigureMockMvc
 class DemoRouteProdAbsentTest {

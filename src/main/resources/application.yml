@@ -34,6 +34,12 @@ mildang:
     # AI가 멈추면 요청 스레드 + DB 커넥션을 붙잡는다 — 반드시 상한을 둔다 (스캔이 20초대라 read는 여유 있게)
     connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_READ_TIMEOUT:30s}
+  kakao:
+    # prod에서 id_token의 aud와 대조할 카카오 앱 키 — 없으면 prod 기동이 실패한다(의도된 동작)
+    app-key: ${KAKAO_APP_KEY:}
+    issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
+    jwks-uri: ${KAKAO_JWKS_URI:https://kauth.kakao.com/.well-known/jwks.json}
+    timeout: ${KAKAO_TIMEOUT:3s}
 
 ---
 spring:
