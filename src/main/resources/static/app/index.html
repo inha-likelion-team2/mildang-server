@@ -288,7 +288,7 @@
     <div class="prog" style="margin-top:14px" id="d-prog"></div>
   </div>
 
-  <button onclick="nav('records')" style="margin-top:14px;background:#fff;border:1.5px dashed #DADADA;border-radius:14px;padding:18px;font-size:15px;font-weight:800;color:var(--muted)">+ 기록 보기</button>
+  <button onclick="nav('calendar')" style="margin-top:14px;background:#fff;border:1.5px dashed #DADADA;border-radius:14px;padding:18px;font-size:15px;font-weight:800;color:var(--muted)">+ 기록 보기</button>
 
   <div id="d-prepaid" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
   <div id="d-expired" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
@@ -392,7 +392,7 @@
     <div style="flex:1;font-size:12px;font-weight:700;color:rgba(0,0,0,.45)" id="c-day"></div>
   </div>
   <h2 class="disp" style="margin:6px 0 0;font-size:27px">오늘 몸은 어땠어요?</h2>
-  <p style="margin:8px 0 0;font-size:13px;color:rgba(0,0,0,.55);line-height:1.5">탭 3번, 10초면 끝. 이 기록으로 종료 시 당신만의 리포트를 만듭니다.</p>
+  <p style="margin:8px 0 0;font-size:13px;color:rgba(0,0,0,.55);line-height:1.5">이 기록으로 종료시 당신만의 리포트를 만듭니다.</p>
   <div class="card" style="margin-top:20px">
     <div style="display:flex;align-items:baseline;gap:8px">
       <div style="font-size:15px;font-weight:900">체중 입력하기</div>
@@ -414,6 +414,30 @@
 </div>
 
 <!-- S6+ · 완주 안내 — 리포트로 바로 튕기지 않고 사용자가 눌러서 들어간다 -->
+<!-- N-1 · 날짜 선택 캘린더 (확정 193:2309) -->
+<div class="scr" id="s-calendar">
+  <div class="back-head">
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('dash')"><path d="M15 18l-6-6 6-6"/></svg>
+  </div>
+  <h2 class="disp" style="margin-top:14px;font-size:28px">기록 보기</h2>
+  <p style="margin-top:6px;font-size:13px;color:var(--muted)">날짜를 선택 해주세요</p>
+
+  <div class="card" style="margin-top:20px;padding:18px 16px;border-top:14px solid var(--y);border-radius:18px">
+    <div style="display:flex;align-items:center">
+      <div class="disp" style="flex:1;font-size:16px" id="cal-title"></div>
+      <button onclick="calMove(-1)" style="background:none;border:none;font-size:20px;color:var(--y-deep);padding:0 8px">‹</button>
+      <button onclick="calMove(1)" style="background:none;border:none;font-size:20px;color:var(--y-deep);padding:0 8px">›</button>
+    </div>
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font-size:11.5px;color:var(--muted);font-weight:700">
+      <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+    </div>
+    <div id="cal-grid" style="margin-top:8px;display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center"></div>
+  </div>
+
+  <div class="grow"></div>
+  <button class="pill-btn" onclick="goRecords()">다음</button>
+</div>
+
 <!-- N · 기록 보기 (확정 193:2309 캘린더 + 193:2338 목록) -->
 <div class="scr" id="s-records">
   <div class="back-head">
@@ -427,10 +451,7 @@
     <div class="prog" style="margin-top:14px" id="r-prog"></div>
   </div>
 
-  <div style="margin-top:18px;display:flex;align-items:center;gap:8px">
-    <div class="disp" style="font-size:17px" id="r-date"></div>
-    <button class="chip" style="font-size:11.5px;padding:6px 11px" onclick="pickRecordDate()">날짜 선택</button>
-  </div>
+  <div style="margin-top:18px" class="disp" id="r-date" style="font-size:17px"></div>
   <div style="margin-top:4px;font-size:12px;color:var(--muted)">최근 입력한 순</div>
   <div id="r-list" style="margin-top:12px;display:flex;flex-direction:column;gap:8px"></div>
   <div class="grow"></div>
@@ -680,6 +701,7 @@ function nav(s) {
   if (s === 'meal') loadMeal();
   if (s === 'promise') loadPromise();
   if (s === 'checkin') loadCheckin();
+  if (s === 'calendar') loadCalendar();
   if (s === 'records') loadRecords();
   if (s === 'report') loadReport();
 }
@@ -939,13 +961,41 @@ function todayISO() {
   if (d.getHours() < 5) d.setDate(d.getDate() - 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-async function pickRecordDate() {
-  const dates = await call('GET', '/items/dates');
-  const has = (dates.days || []).map(d => d.date);
-  const picked = prompt(`날짜를 입력하세요 (YYYY-MM-DD)\n기록이 있는 날: ${has.length ? has.join(', ') : '없음'}`, recordDate || todayISO());
-  if (!picked) return;
-  recordDate = picked.trim();
-  loadRecords();
+// 캘린더 — 기록이 있는 날에 점을 찍는다 (GET /items/dates)
+let calMonth = null, calDays = {};
+async function loadCalendar() {
+  if (!calMonth) calMonth = todayISO().slice(0, 7);
+  const r = await call('GET', `/items/dates?month=${calMonth}`);
+  calDays = {};
+  (r.days || []).forEach(d => { calDays[d.date] = d.count; });
+  renderCalendar();
+}
+function calMove(delta) {
+  const [y, m] = calMonth.split('-').map(Number);
+  const d = new Date(y, m - 1 + delta, 1);
+  calMonth = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  loadCalendar();
+}
+function renderCalendar() {
+  const [y, m] = calMonth.split('-').map(Number);
+  const first = new Date(y, m - 1, 1);
+  const last = new Date(y, m, 0).getDate();
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  $('cal-title').textContent = `${MONTHS[m - 1]} ${y}`;
+  let cells = '';
+  for (let i = 0; i < first.getDay(); i++) cells += '<div></div>';
+  for (let day = 1; day <= last; day++) {
+    const iso = `${calMonth}-${String(day).padStart(2, '0')}`;
+    const on = recordDate === iso;
+    const has = calDays[iso];
+    cells += `<div onclick="recordDate='${iso}';renderCalendar()" style="cursor:pointer;padding:9px 0;border-radius:50%;font-size:14px;font-weight:${on ? '900' : '600'};background:${on ? 'var(--y)' : 'transparent'};position:relative">
+      ${day}${has ? `<span style="position:absolute;left:50%;bottom:2px;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:${on ? 'var(--ink)' : 'var(--y-deep)'}"></span>` : ''}</div>`;
+  }
+  $('cal-grid').innerHTML = cells;
+}
+function goRecords() {
+  if (!recordDate) recordDate = todayISO();
+  nav('records');
 }
 
 // ---------- 항목 카드 (3a·3b 공용) ----------
@@ -1001,14 +1051,13 @@ async function prepayItem(id) {
 // ---------- S3b · 식사하기 ----------
 async function loadMeal() {
   if (!budget) { try { const c = await call('GET', '/challenges/current'); budget = c.budget; challenge = c.challenge; } catch (e) {} }
-  const mealsLeft = challenge ? Math.max(1, challenge.totalDays - challenge.dayIndex) : null;
-  $('m-sub').innerHTML = `잔액 <strong class="disp" style="font-size:15px;color:#222">${budget ? budget.balance : '?'}</strong>${mealsLeft ? ` · 앞으로 ${mealsLeft}끼` : ''}`;
   const p = await call('GET', '/presets');
   $('m-presets').innerHTML = p.presets.map(x =>
     `<button class="chip" onclick="fromPreset('${x.id}')">${x.name} <span class="disp" style="font-size:13px">${x.points}</span></button>`).join('');
   const r = await call('GET', '/items?kind=MEAL&status=PENDING,HAGGLED');
-  $('m-items').innerHTML = r.items.map(i => itemCard(i, 'meal')).join('')
-    || `<div style="text-align:center;font-size:12px;color:rgba(0,0,0,.4);padding:12px">아직 항목이 없어요 — 위에서 입력해보세요</div>`;
+  // 부제는 시안 문구 그대로 — 후보가 쌓이면 「오늘 선택한 후보지 목록이에요」로 바뀐다
+  $('m-sub').textContent = r.items.length ? '오늘 선택한 후보지 목록이에요' : '처음이라면 1주부터 가볍게 추천해요.';
+  $('m-items').innerHTML = r.items.map(i => itemCard(i, 'meal')).join('');
 }
 async function fromPreset(pid) { await call('POST', '/items', { kind: 'MEAL', presetId: pid }); loadMeal(); }
 
@@ -1093,37 +1142,60 @@ async function doScan(file) {
     $('cam-file').value = '';
   }
 }
+// 시안 4b는 행에 버튼이 없다 — 행을 탭하면 상단 노란 카드가 그 메뉴로 바뀐다
+let selectedMenuId = null;
+
 function renderScan() {
   const r = scanData;
   $('sc-place').textContent = r.place || '(상호 미인식)';
-  const rec = r.recommendation;
-  if (rec) {
-    const m = r.menus.find(x => x.id === rec.menuId);
-    const shown = m && m.item ? m.item.points : rec.points;
-    $('sc-rec').innerHTML = `<div class="card sel" style="margin-top:18px">
-      <div style="font-size:12.5px;font-weight:700;color:var(--muted)">밀당이의 추천・잔액 ${budget ? budget.balance : '?'}</div>
-      <div class="disp" style="margin-top:6px;font-size:24px">${m ? m.name : ''} ${shown}</div>
-      ${rec.comment ? `<p style="margin:10px 0 0;font-size:13px;line-height:1.6">“${rec.comment}”</p>` : ''}
-      <div class="card-actions">
-        <button style="flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;font-size:14.5px;font-weight:800" onclick="scanRecord('${rec.menuId}')">${shown} 차감 하기</button>
-        <button class="go" onclick="scanHaggle('${rec.menuId}')">채팅 하기</button>
-      </div></div>`;
-  } else $('sc-rec').innerHTML = '';
+  if (selectedMenuId === null && r.recommendation) selectedMenuId = r.recommendation.menuId;
+  renderScanTop();
   $('sc-menus').innerHTML = r.menus.map(m => {
-    const isRec = rec && rec.menuId === m.id;
     const hag = m.item && m.item.haggled ? m.item : null;
     const shown = hag ? hag.points : m.points;
-    return `<div class="item-card${hag || isRec ? ' hl' : ''}" style="display:flex;align-items:center;gap:14px;padding:14px 16px">
-      <div class="disp" onclick="editMenu('${m.id}',this)" title="탭해서 수정" style="cursor:pointer;min-width:34px;text-align:center;font-size:22px">${shown}</div>
+    const on = selectedMenuId === m.id;
+    return `<div class="item-card${on ? ' hl' : ''}" onclick="selectMenu('${m.id}')"
+        style="display:flex;align-items:center;gap:16px;padding:16px;cursor:pointer">
+      <div class="disp" onclick="event.stopPropagation();editMenu('${m.id}',this)" title="탭해서 수정"
+        style="min-width:34px;text-align:center;font-size:22px">${shown}</div>
       <div style="flex:1">
         <div style="font-size:15px;font-weight:900">${m.name}${m.edited ? ' ✎' : ''}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">${hag ? '밀당으로 합의한 값' : (m.basis || '')}</div>
-      </div>
-      <div style="display:flex;gap:5px">
-        <button class="chip" style="padding:6px 10px;font-size:11.5px" onclick="scanHaggle('${m.id}')">밀당</button>
-        <button class="chip" style="padding:6px 10px;font-size:11.5px;background:var(--y)" onclick="scanRecord('${m.id}')">기록</button>
+        <div style="font-size:12.5px;color:var(--muted);margin-top:3px">${hag ? '밀당으로 합의한 값' : (m.basis || '')}</div>
       </div></div>`;
   }).join('');
+}
+
+function renderScanTop() {
+  const r = scanData;
+  const m = r.menus.find(x => x.id === selectedMenuId);
+  if (!m) { $('sc-rec').innerHTML = ''; return; }
+  const shown = m.item ? m.item.points : m.points;
+  const comment = (m.comment !== undefined && m.comment !== null)
+    ? m.comment
+    : (r.recommendation && r.recommendation.menuId === m.id ? r.recommendation.comment : '');
+  $('sc-rec').innerHTML = `<div class="card sel" style="margin-top:18px">
+    <div style="font-size:12.5px;font-weight:700;color:var(--muted)">밀당이의 추천・잔액 ${budget ? budget.balance : '?'}</div>
+    <div class="disp" style="margin-top:6px;font-size:24px">${m.name} ${shown}</div>
+    <p style="margin:10px 0 0;font-size:13px;line-height:1.6;min-height:42px">${comment ? '“' + comment + '”' : '<span style="color:var(--muted)">밀당이가 보는 중…</span>'}</p>
+    <div class="card-actions">
+      <button style="flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px;font-size:14.5px;font-weight:800" onclick="event.stopPropagation();scanRecord('${m.id}')">${shown} 차감 하기</button>
+      <button class="go" onclick="event.stopPropagation();scanHaggle('${m.id}')">채팅 하기</button>
+    </div></div>`;
+}
+
+// 메뉴마다 코멘트를 따로 만든다 (POST /scans/{id}/menus/{menuId}/comment) — 한 번 받은 건 캐시된다
+async function selectMenu(menuId) {
+  selectedMenuId = menuId;
+  renderScan();
+  const m = scanData.menus.find(x => x.id === menuId);
+  if (m.comment !== undefined && m.comment !== null) return;
+  try {
+    const c = await call('POST', `/scans/${scanData.id}/menus/${menuId}/comment`, {});
+    m.comment = c.comment;
+  } catch (e) {
+    m.comment = '';
+  }
+  renderScanTop();
 }
 function editMenu(menuId, el) {
   const m = scanData.menus.find(x => x.id === menuId);
@@ -1220,7 +1292,7 @@ async function abandonHaggle() {
 }
 
 // ---------- S6 · 체크인 ----------
-const CVALS = ['GOOD', 'MID', 'BAD'], CLABEL = { GOOD: '괜찮았어', MID: '보통', BAD: '별로였어' };
+const CVALS = ['GOOD', 'MID', 'BAD'], CLABEL = { GOOD: '좋음', MID: '보통', BAD: '나쁨' };
 let checkinAnswers = {}, checkinQs = [];
 async function loadCheckin() {
   const r = await call('GET', '/checkins/today');

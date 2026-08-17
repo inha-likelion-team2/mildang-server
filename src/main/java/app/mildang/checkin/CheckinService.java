@@ -20,9 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class CheckinService {
 
     private static final List<Question> QUESTIONS = List.of(
-            new Question("BLOAT", "더부룩함", "식후 속 상태"),
-            new Question("SKIN", "피부", "트러블·건조"),
-            new Question("DROWSY", "낮 졸림", "식곤증 정도"));
+            // 문구는 확정 와이어프레임 173:813 그대로
+            new Question("BLOAT", "붓기", "얼굴 붓기 변화・체형 변화"),
+            new Question("SKIN", "피부", "트러블 건조"),
+            new Question("DROWSY", "식곤증", "식후 졸림 정도"));
 
     private final CheckinRepository checkinRepository;
     private final ChallengeService challengeService;
