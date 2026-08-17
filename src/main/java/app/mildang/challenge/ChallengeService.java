@@ -178,7 +178,7 @@ public class ChallengeService {
         BudgetPolicy.Result result =
                 BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
         return new EstimateResponse(result.estimatedWeekly(), result.recommended(), result.cutRatePercent(),
-                result.rationale(), ANCHORS, result.options(), result.totalBudget());
+                result.rationale(), ANCHORS, result.options(), result.totalBudget(), result.slider());
     }
 
     @Transactional
@@ -191,23 +191,27 @@ public class ChallengeService {
         BudgetPolicy.Result estimate =
                 BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
 
-        // v1.3: 요청 budget은 주간값 — options[optionKey].budget과 정확히 일치해야 함 (§3.4, CUSTOM 없음)
-        BudgetPolicy.Option selected = estimate.option(request.optionKey());
-        if (selected.budget() != request.budget()) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "예산이 제안값과 달라요.", "budget", null);
+        // 요청 budget은 주간값. 디자인(온보딩_03)이 슬라이더로 바뀌면서 «제안값 3개 중 하나»가 아니라
+        // 범위 안의 아무 값이나 받는다. optionKey는 보내면 기록하고, 없으면 값에서 가장 가까운 걸 추정한다.
+        if (!BudgetPolicy.inRange(request.budget(), estimate.slider())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "예산은 " + estimate.slider().min() + "~" + estimate.slider().max()
+                            + " 사이에서 " + estimate.slider().step() + " 단위로 정해주세요.", "budget", null);
         }
-        int totalBudget = selected.totalBudget(); // 저장·응답은 기간 총액 = 주간 × 곱수
+        OptionKey optionKey = request.optionKey() != null
+                ? request.optionKey() : nearestOption(estimate, request.budget());
+        int totalBudget = request.budget() * challenge.getPeriod().weeks(); // 저장·응답은 기간 총액
 
         Instant now = Instant.now();
         challenge.setSurveyNoodle(survey.noodle());
         challenge.setSurveyBread(survey.bread());
         challenge.setSurveySnack(survey.snack());
-        challenge.setOptionKey(request.optionKey());
+        challenge.setOptionKey(optionKey);
         challenge.setBudgetWeekly(request.budget());
         challenge.setBudget(totalBudget);
         challenge.setBalance(totalBudget);
         challenge.setEstimatedWeekly(estimate.estimatedWeekly());
-        challenge.setCutRatePercent(BudgetPolicy.cutRateOf(request.optionKey()));
+        challenge.setCutRatePercent(BudgetPolicy.cutRateOf(optionKey));
         challenge.setStatus(ChallengeStatus.ACTIVE);
         challenge.setStartedAt(now);
         challenge.setEndsAt(now.plus(Duration.ofDays(challenge.getTotalDays())).minusSeconds(1));
@@ -223,6 +227,48 @@ public class ChallengeService {
         return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getPeriod(),
                 challenge.getBudget(), challenge.getBalance(),
                 challenge.getStartedAt(), challenge.getEndsAt(), new StartTip(tip));
+    }
+
+    /** 슬라이더 값에 가장 가까운 옵션 — 리포트의 «다음엔 한 단계 세게» 추천이 이 값을 쓴다 */
+    private static OptionKey nearestOption(BudgetPolicy.Result estimate, int weeklyBudget) {
+        return estimate.options().stream()
+                .min(java.util.Comparator.comparingInt(o -> Math.abs(o.budget() - weeklyBudget)))
+                .map(BudgetPolicy.Option::key)
+                .orElse(OptionKey.AS_IS);
+    }
+
+    /**
+     * 예산 조정 — 화면 «온보딩_03»의 "나중에도 언제든지 조정할 수 있어요".
+     * 이미 쓴 것(spent·prepaid)은 건드리지 않고 총액만 다시 잡는다.
+     * 새 총액이 이미 쓴 것보다 적으면 잔액이 음수가 되는데, 그건 초과로 정상 처리한다(불변 조건 5).
+     */
+    @Transactional
+    public ConfirmResponse adjustBudget(String userId, String challengeId, int weeklyBudget) {
+        Challenge challenge = owned(userId, challengeId);
+        if (challenge.getStatus() != ChallengeStatus.ACTIVE) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "진행 중인 챌린지만 예산을 조정할 수 있어요.", "budget", null);
+        }
+        BudgetPolicy.Result estimate = BudgetPolicy.estimate(
+                challenge.getSurveyNoodle(), challenge.getSurveyBread(), challenge.getSurveySnack(),
+                challenge.getPeriod());
+        if (!BudgetPolicy.inRange(weeklyBudget, estimate.slider())) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "예산은 " + estimate.slider().min() + "~" + estimate.slider().max()
+                            + " 사이에서 " + estimate.slider().step() + " 단위로 정해주세요.", "budget", null);
+        }
+
+        int totalBudget = weeklyBudget * challenge.getPeriod().weeks();
+        challenge.setBudgetWeekly(weeklyBudget);
+        challenge.setBudget(totalBudget);
+        // 항등식 유지: balance = total − spent − prepaid
+        challenge.setBalance(totalBudget - challenge.getSpent() - challenge.getPrepaid());
+        challenge.setOptionKey(nearestOption(estimate, weeklyBudget));
+        challenge.setCutRatePercent(BudgetPolicy.cutRateOf(challenge.getOptionKey()));
+
+        return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getPeriod(),
+                challenge.getBudget(), challenge.getBalance(),
+                challenge.getStartedAt(), challenge.getEndsAt(), null);
     }
 
     private Survey resolveSurvey(String userId, Challenge challenge, Survey requested) {

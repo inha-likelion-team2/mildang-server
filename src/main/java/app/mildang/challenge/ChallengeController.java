@@ -1,5 +1,6 @@
 package app.mildang.challenge;
 
+import app.mildang.challenge.ChallengeDtos.AdjustBudgetRequest;
 import app.mildang.challenge.ChallengeDtos.ConfirmRequest;
 import app.mildang.challenge.ChallengeDtos.ConfirmResponse;
 import app.mildang.challenge.ChallengeDtos.CreateRequest;
@@ -12,6 +13,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -44,6 +46,13 @@ public class ChallengeController {
     public ConfirmResponse confirm(@CurrentUser String userId, @PathVariable String id,
                                    @Valid @RequestBody ConfirmRequest request) {
         return challengeService.confirm(userId, id, request);
+    }
+
+    /** 예산 조정 — 화면 «온보딩_03»의 "나중에도 언제든지 조정할 수 있어요" */
+    @PatchMapping("/{id}/budget")
+    public ConfirmResponse adjustBudget(@CurrentUser String userId, @PathVariable String id,
+                                        @Valid @RequestBody AdjustBudgetRequest request) {
+        return challengeService.adjustBudget(userId, id, request.budget());
     }
 
     @GetMapping("/current")

@@ -32,17 +32,27 @@ public class ChallengeDtos {
     public record EstimateRequest(@NotNull @Valid Survey survey) {
     }
 
+    /** slider는 화면 «온보딩_03»(가볍게 ↔ 넉넉하게)이 쓴다. options는 하위 호환으로 남겨둔 값 */
     public record EstimateResponse(int estimatedWeekly, int recommended, int cutRatePercent,
                                    String rationale, List<Anchor> anchors,
-                                   List<BudgetPolicy.Option> options, int totalBudget) {
+                                   List<BudgetPolicy.Option> options, int totalBudget,
+                                   BudgetPolicy.Slider slider) {
     }
 
     public record Anchor(String label, int points) {
     }
 
     // ---- POST /challenges/{id}/budget ----
-    /** budget은 주간값(options[optionKey].budget) — 저장·응답은 기간 총액 (§3.4) */
-    public record ConfirmRequest(@Valid Survey survey, @NotNull OptionKey optionKey, @NotNull Integer budget) {
+    /**
+     * budget은 주간값 — 저장·응답은 기간 총액.
+     * 슬라이더로 바뀌면서 «제안값 3개 중 하나»가 아니라 범위 안의 아무 값이나 받는다.
+     * optionKey는 선택 — 안 보내면 서버가 값에서 가장 가까운 걸 기록한다.
+     */
+    public record ConfirmRequest(@Valid Survey survey, OptionKey optionKey, @NotNull Integer budget) {
+    }
+
+    /** 예산 조정 — "나중에도 언제든지 조정할 수 있어요" */
+    public record AdjustBudgetRequest(@NotNull Integer budget) {
     }
 
     public record ConfirmResponse(String id, ChallengeStatus status, Period period, int budget, int balance,
