@@ -11,6 +11,7 @@ import app.mildang.common.error.ApiException;
 import app.mildang.common.error.ErrorCode;
 import app.mildang.item.Item;
 import app.mildang.item.ItemRepository;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -63,7 +64,7 @@ public class DemoController {
     }
 
     @PostMapping("/seed")
-    public Map<String, Object> seed(@CurrentUser String userId, @RequestBody SeedRequest request) {
+    public Map<String, Object> seed(@CurrentUser String userId, @Valid @RequestBody SeedRequest request) {
         Challenge challenge = seedService.seed(userId, request.scenario());
         Map<String, Object> body = new HashMap<>();
         body.put("mocked", true);
@@ -123,7 +124,7 @@ public class DemoController {
 
     /** 배치 즉시 실행 — 스케줄러와 같은 코드를 호출한다 (명세 §14.6) */
     @PostMapping("/run-batch")
-    public Map<String, Object> runBatch(@CurrentUser String userId, @RequestBody RunBatchRequest request) {
+    public Map<String, Object> runBatch(@CurrentUser String userId, @Valid @RequestBody RunBatchRequest request) {
         Instant now = Instant.now();
         int converted = 0;
         int expired = 0;

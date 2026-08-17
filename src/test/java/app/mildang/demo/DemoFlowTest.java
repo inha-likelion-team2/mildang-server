@@ -174,4 +174,32 @@ class DemoFlowTest {
         mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    @Order(6)
+    @DisplayName("시나리오를 빠뜨리면 500이 아니라 안내되는 400")
+    void missingScenarioIsGuided() throws Exception {
+        // @Valid가 빠져 있어 @NotNull이 무시됐고, switch(null)이 NPE로 터져 500이 나갔다
+        mvc.perform(post("/demo/seed")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+
+        mvc.perform(post("/demo/run-batch")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.code").value("VALIDATION_FAILED"));
+
+        // 목록에 없는 이름은 그대로 400
+        mvc.perform(post("/demo/seed")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"scenario\":\"NOPE\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error.field").value("scenario"));
+    }
 }

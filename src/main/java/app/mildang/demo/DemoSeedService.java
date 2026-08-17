@@ -83,7 +83,9 @@ public class DemoSeedService {
             case "W4_DAY12" -> w4Day12(userId);
             case "LOW_BALANCE" -> lowBalance(userId);
             case "EXPIRED_CONFIRM" -> expiredConfirm(userId);
-            default -> throw new ApiException(ErrorCode.VALIDATION_FAILED, "지원하지 않는 시나리오예요.", "scenario", null);
+            // scenario를 빼먹으면 switch가 NPE를 던져 500이 됐다 — 안내가 되는 400으로
+            case null, default ->
+                    throw new ApiException(ErrorCode.VALIDATION_FAILED, "지원하지 않는 시나리오예요.", "scenario", null);
         };
     }
 
