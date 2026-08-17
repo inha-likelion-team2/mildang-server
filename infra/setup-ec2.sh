@@ -13,6 +13,8 @@ DB_PASSWORD="여기에-DB-비밀번호"       # 아무 랜덤 문자열
 JWT_SECRET="여기에-32바이트-이상-시크릿" # 32자 이상 랜덤 문자열
 OPENAI_API_KEY="여기에-키"            # AI팀에게 받기 (AI 서버용)
 OPENAI_MODEL="여기에-모델명"           # AI팀이 쓰는 모델
+KAKAO_APP_KEY=""                     # 카카오 앱의 REST API 키. prod 프로필로 올릴 때만 필요
+                                     # (아래 서비스는 demo 프로필이라 카카오 검증을 하지 않는다)
 # ------------------------------------
 
 echo "== 1. swap 2GB (t2.micro RAM 1GB 보강) =="
@@ -93,6 +95,9 @@ Environment=JWT_SECRET=${JWT_SECRET}
 Environment=AI_BASE_URL=http://localhost:8000
 Environment=AI_FAKE=false
 Environment=PUBLIC_BASE_URL=https://${DOMAIN}
+# ⚠ 지금은 demo 프로필이라 idToken을 검증하지 않는다(아무 문자열이나 계정이 된다).
+#    실서비스로 올릴 땐 SPRING_PROFILES_ACTIVE=prod 로 바꾸고 아래를 함께 켤 것.
+# Environment=KAKAO_APP_KEY=${KAKAO_APP_KEY}
 ExecStart=/usr/bin/java -Xmx350m -jar /opt/mildang/mildang-server.jar
 Restart=always
 RestartSec=5

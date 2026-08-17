@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (7) | **카카오 로그인 실검증** — prod에서 `idToken`을 카카오 JWKS로 검증한다(서명·`iss`·`aud`·`exp`). 위조·타 앱·타 발급자 토큰은 `TOKEN_INVALID`, 만료는 `TOKEN_EXPIRED`. **demo/local은 기존대로 통과**(문자열이 곧 계정) |
 | 2026-08-17 (6) | **기록 보기 화면** — `GET /items`에 `date` 필터 추가(주면 그날치만 + `day{date,count,totalPoints}`), 캘린더용 **`GET /items/dates` 신설**(그 달에 기록이 있는 날) |
 | 2026-08-17 (5) | **체중 기록 신설** — 컨디션 체크인에서 함께 받는다(`checkins/today`의 `weightKg`, 선택). — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
 | 2026-08-17 (4) | **`POST /scans/{id}/menus/{menuId}/comment` 신설** — 화면 4b에서 하단 메뉴를 탭하면 상단 메모가 그 메뉴로 바뀐다. 메뉴마다 코멘트를 따로 만든다 |
