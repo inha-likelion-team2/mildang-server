@@ -528,6 +528,7 @@ function toast(msg) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => $('toast').classList.remove('on'), 3800);
 }
 
+let rerouting = false; // 404 자동 재라우팅 재진입 방지
 // quiet=true : 실패를 호출부가 직접 처리하는 «탐색» 요청 — 사용자에게 토스트를 띄우지 않는다
 async function call(method, path, body, isForm, quiet, retried) {
   const opts = { method, headers: {} };
@@ -542,10 +543,12 @@ async function call(method, path, body, isForm, quiet, retried) {
     if (res.status === 401 && refreshToken && !retried && path !== '/auth/refresh') {
       if (await tryRefresh()) return call(method, path, body, isForm, quiet, true);
     }
-    // 챌린지가 방금 끝났으면(마지막 날 경계) 화면을 다시 라우팅해 완주 안내로 넘긴다
-    if (res.status === 404 && !quiet && data && data.error && data.error.message
+    // 챌린지가 방금 끝났으면(마지막 날 경계) 화면을 다시 라우팅해 완주 안내로 넘긴다.
+    // rerouting 가드가 없으면 route()가 부르는 요청이 또 404를 맞아 재귀한다.
+    if (res.status === 404 && !quiet && !rerouting && data && data.error && data.error.message
         && data.error.message.indexOf('진행 중인 챌린지가 없어요') === 0) {
-      route();
+      rerouting = true;
+      Promise.resolve(route()).finally(() => { rerouting = false; });
       throw { status: res.status, data };
     }
     if (!quiet && data && data.error && data.error.message) toast(data.error.message);
@@ -593,7 +596,9 @@ async function login(idToken, seedScenario) {
 }
 async function route() {
   try {
-    const r = await call('GET', '/challenges/current');
+    // quiet 필수 — 이 404는 route가 직접 처리한다. 아니면 call()의 자동 재라우팅이
+    // route를 다시 불러 무한 재귀에 빠지고 탭이 얼어붙는다.
+    const r = await call('GET', '/challenges/current', null, false, true);
     saveLast(r.challenge.id); challenge = r.challenge;
     if (r.challenge.status === 'COMPLETED') { showDone(r.challenge.id); } else nav('dash');
   } catch (e) {
