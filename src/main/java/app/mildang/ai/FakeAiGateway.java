@@ -122,8 +122,16 @@ public class FakeAiGateway implements AiGateway {
 
     @Override
     public String scanComment(AiDtos.ScanCommentRequest request) {
-        return trim90("\"" + request.compareWith().name() + "(" + request.compareWith().points()
-                + ")을 고르면 내일이 빠듯해요. " + request.target().points() + "이면 남는 장사죠.\"");
+        AiDtos.ScanCommentMenu target = request.target();
+        AiDtos.ScanCommentMenu compare = request.compareWith();
+        // 비교 대상이 더 쌀 수도 있다(가장 비싼 메뉴를 탭한 경우) — 방향을 안 보면
+        // "40을 고르면 빠듯해요, 80이면 남는 장사죠" 같은 거꾸로 된 문장이 나온다
+        String text = compare.points() > target.points()
+                ? compare.name() + "(" + compare.points() + ")을 고르면 내일이 빠듯해요. "
+                        + target.points() + "이면 남는 장사죠."
+                : compare.name() + "(" + compare.points() + ")보다 " + (target.points() - compare.points())
+                        + " 더 쓰는 셈이에요. 그만큼 내일이 빠듯해집니다.";
+        return trim90("\"" + text + "\"");
     }
 
     @Override

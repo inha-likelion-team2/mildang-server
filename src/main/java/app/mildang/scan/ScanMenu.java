@@ -51,4 +51,11 @@ public class ScanMenu {
     /** points 오름차순 — 백엔드가 정렬 */
     @Column(nullable = false)
     private int sortOrder;
+
+    /**
+     * 이 메뉴를 «탭했을 때» 상단 메모에 뜨는 밀당이 코멘트 (화면 4b).
+     * 한 번 만들면 재사용한다 — 탭할 때마다 AI를 부르면 지연도 비용도 매번 든다.
+     */
+    @Column(length = 200)
+    private String comment;
 }

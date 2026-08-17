@@ -49,6 +49,13 @@ public class ScanController {
         return scanService.get(userId, id);
     }
 
+    /** 하단 목록에서 메뉴를 탭 → 상단 메모 갱신 (화면 4b) */
+    @PostMapping("/{id}/menus/{menuId}/comment")
+    public ScanDtos.MenuCommentResponse menuComment(@CurrentUser String userId, @PathVariable String id,
+                                                    @PathVariable String menuId) {
+        return scanService.menuComment(userId, id, menuId);
+    }
+
     @PatchMapping("/{id}/menus/{menuId}")
     public MenuRow patchMenu(@CurrentUser String userId, @PathVariable String id,
                              @PathVariable String menuId, @Valid @RequestBody PatchMenuRequest request) {

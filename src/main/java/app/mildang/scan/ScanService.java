@@ -170,10 +170,50 @@ public class ScanService {
         menu.setConfidence(Confidence.CERTAIN);
         menu.setBasis("직접 입력한 값");
         menu.setEdited(true);
+        menu.setComment(null); // 가격이 바뀌면 코멘트가 낡는다 — 다음 탭에서 다시 만든다
         // 실측 수집 — demo는 로그만 (§14.1)
         log.info("measured-price place={} menu={} userPoints={} aiPoints={}",
                 scan.getPlace(), menu.getName(), points, menu.getAiPoints());
         return row(menu);
+    }
+
+    /**
+     * 하단 목록에서 메뉴를 탭했을 때 상단 메모를 채운다 (화면 4b).
+     * 코멘트는 메뉴마다 다르다 — 추천 메뉴 것을 그대로 쓰면 "냉면을 고르면 안 좋다"는 말이
+     * 냉면을 골랐을 때도 그대로 남아 앞뒤가 안 맞는다.
+     * 한 번 만든 코멘트는 저장해서 다시 탭할 때 AI를 부르지 않는다.
+     */
+    @Transactional
+    public ScanDtos.MenuCommentResponse menuComment(String userId, String scanId, String menuId) {
+        Challenge challenge = challengeService.requireActive(userId);
+        Scan scan = owned(userId, scanId);
+        List<ScanMenu> menus = scanMenuRepository.findByScanIdOrderBySortOrderAsc(scanId);
+        ScanMenu target = menus.stream()
+                .filter(m -> m.getMenuNo() == parseMenuNo(menuId))
+                .findFirst()
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "스캔 결과를 찾을 수 없어요."));
+
+        if (target.getComment() == null) {
+            ScanMenu compare = compareFor(target, menus);
+            if (compare != null) {
+                int mealsLeft = Math.max(1, challenge.getTotalDays() - challengeService.dayIndex(challenge, Instant.now()));
+                target.setComment(commentWithRetry(target, compare, challenge, mealsLeft, scan.getPlace()));
+            }
+        }
+        return new ScanDtos.MenuCommentResponse("mnu_" + target.getMenuNo(), target.getName(),
+                target.getPoints(), target.getBasis(), target.getComment(),
+                challenge.getBalance() - target.getPoints());
+    }
+
+    /** 비교 대상 — 탭한 메뉴보다 비싼 것 중 최저가, 없으면 그보다 싼 것 중 최고가 */
+    private static ScanMenu compareFor(ScanMenu target, List<ScanMenu> menus) {
+        return menus.stream()
+                .filter(m -> m.getMenuNo() != target.getMenuNo() && m.getPoints() > target.getPoints())
+                .min(Comparator.comparingInt(ScanMenu::getPoints))
+                .orElseGet(() -> menus.stream()
+                        .filter(m -> m.getMenuNo() != target.getMenuNo())
+                        .max(Comparator.comparingInt(ScanMenu::getPoints))
+                        .orElse(null));
     }
 
     /** 항목 생성용 (§6.3 B) — 소유 검증 포함 */

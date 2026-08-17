@@ -31,6 +31,14 @@ public class ScanDtos {
     public record Recommendation(String menuId, int points, String comment) {
     }
 
+    /**
+     * 하단 목록에서 메뉴를 탭했을 때 상단 메모에 채울 것 (화면 4b).
+     * comment는 생성 실패 시 null — 그때는 메모의 말풍선만 접으면 된다.
+     */
+    public record MenuCommentResponse(String menuId, String name, int points, String basis,
+                                      String comment, int balanceAfter) {
+    }
+
     public record PatchMenuRequest(@NotNull @Min(0) @Max(999) Integer points) {
     }
 }
