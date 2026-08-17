@@ -85,8 +85,8 @@ public class ScanService {
         Map<String, Estimate> estimates = estimateBatch(menuNames, extract.cuisine());
 
         int dayIndex = challengeService.dayIndex(challenge, Instant.now());
-        // 남은 끼수 — 명세 미정의: totalDays − dayIndex (v1.3 §5.3 예시 day4/7→3와 일치) [백엔드 결정]
-        int mealsLeft = Math.max(1, challenge.getTotalDays() - dayIndex);
+        // 남은 끼수는 대시보드 「앞으로 N끼」와 같은 값이어야 한다 — 계산은 ChallengeService 한 곳에
+        int mealsLeft = challengeService.mealsLeft(challenge, Instant.now());
 
         Instant now = Instant.now();
         Scan scan = new Scan();

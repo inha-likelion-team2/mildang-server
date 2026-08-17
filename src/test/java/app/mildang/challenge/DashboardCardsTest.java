@@ -161,6 +161,40 @@ class DashboardCardsTest {
 
     @Test
     @Order(6)
+    @DisplayName("★ 예산 카드의 「잔액 52 ・앞으로 4끼」 — mealsLeft가 나간다")
+    void budgetCardCarriesMealsLeft() throws Exception {
+        // W1(7일) 1일차 → 앞으로 6끼. 스캔이 AI에 보내는 값과 같은 계산이어야 한다
+        mvc.perform(get("/challenges/current").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.budget.mealsLeft").value(6))
+                .andExpect(jsonPath("$.challenge.dayIndex").value(1))
+                .andExpect(jsonPath("$.challenge.totalDays").value(7));
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("★ 진행률 칸에 체중 여부도 함께 — 카드가 일차별 체중을 같이 그린다")
+    void progressCarriesWeighed() throws Exception {
+        mvc.perform(get("/challenges/current").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress.days[0].weighed").value(false));
+
+        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/weights/today")
+                        .header("Authorization", auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"weightKg\":58.0}"))
+                .andExpect(status().isOk());
+
+        mvc.perform(get("/challenges/current").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.progress.days[0].weighed").value(true))
+                .andExpect(jsonPath("$.weights[0].dayIndex").value(1))
+                .andExpect(jsonPath("$.weights[0].weightKg").value(58.0));
+    }
+
+    @Test
+    @Order(8)
     @DisplayName("★ 팁(밀당이 말풍선)은 알림과 다른 자리라 그대로 있다")
     void tipIsSeparate() throws Exception {
         mvc.perform(get("/challenges/current").header("Authorization", auth()))

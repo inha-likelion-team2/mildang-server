@@ -411,6 +411,8 @@ public class ChallengeService {
         Set<LocalDate> checkedIn = checkinRepository
                 .findByChallengeIdIn(List.of(challenge.getId())).stream()
                 .map(app.mildang.checkin.Checkin::getDate).collect(java.util.stream.Collectors.toSet());
+        Set<LocalDate> weighed = weightService.series(challenge.getId()).stream()
+                .map(w -> LocalDate.parse(w.date())).collect(java.util.stream.Collectors.toSet());
         Set<LocalDate> recorded = itemRepository
                 .findByChallengeIdAndStatusInOrderByCreatedAtDesc(
                         challenge.getId(), List.of(ItemStatus.RECORDED)).stream()
@@ -420,7 +422,8 @@ public class ChallengeService {
         for (int i = 0; i < total; i++) {
             LocalDate date = start.plusDays(i);
             days.add(new ChallengeDtos.ProgressDay(i + 1, date.toString(),
-                    checkedIn.contains(date), recorded.contains(date), date.isAfter(today)));
+                    checkedIn.contains(date), recorded.contains(date),
+                    weighed.contains(date), date.isAfter(today)));
         }
         return new ChallengeDtos.ProgressView(dayIndex(challenge, now), total, days);
     }
@@ -442,7 +445,15 @@ public class ChallengeService {
         int gauge = total == 0 ? 0
                 : Math.max(0, Math.min(100, (int) Math.round(challenge.getBalance() * 100.0 / total)));
         return new BudgetView(total, challenge.getBalance(), challenge.getSpent(),
-                challenge.getPrepaid(), gauge);
+                challenge.getPrepaid(), gauge, mealsLeft(challenge, Instant.now()));
+    }
+
+    /**
+     * 화면 「앞으로 N끼」 — 남은 끼수. 명세에 정의가 없어 <b>totalDays − dayIndex</b>로 둔다
+     * (v1.3 §5.3 예시 4일차/7일 → 3과 일치). 스캔·AI 요청도 같은 값을 써야 해서 여기 하나만 둔다.
+     */
+    public int mealsLeft(Challenge challenge, Instant now) {
+        return Math.max(1, challenge.getTotalDays() - dayIndex(challenge, now));
     }
 
     /** 진행 중(ACTIVE) 챌린지 — 없으면 404. 기간이 지났으면 COMPLETED 전이 후 404. */

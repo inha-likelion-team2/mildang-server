@@ -94,7 +94,9 @@ public class ChallengeDtos {
                                 int dayIndex, int totalDays, String label) {
     }
 
-    public record BudgetView(int total, int balance, int spent, int prepaid, int gaugePercent) {
+    /** mealsLeft = 화면 「잔액 52 ・앞으로 4끼」의 «앞으로 N끼» */
+    public record BudgetView(int total, int balance, int spent, int prepaid, int gaugePercent,
+                             int mealsLeft) {
     }
 
     public record PaceView(int expectedBalance, int diff, String note, String state) {
@@ -131,7 +133,8 @@ public class ChallengeDtos {
     }
 
     /** future=true면 아직 오지 않은 날 — 체크박스를 비워두면 된다 */
-    public record ProgressDay(int dayIndex, String date, boolean checkin, boolean recorded, boolean future) {
+    public record ProgressDay(int dayIndex, String date, boolean checkin, boolean recorded,
+                              boolean weighed, boolean future) {
     }
 
     public record ExpiredConfirmView(String id, String logicalDate, String menuLabel, int points, String question) {
