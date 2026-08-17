@@ -47,6 +47,13 @@ public class HaggleService {
             "PROMISE", List.of("반만 먹을게", "메뉴를 내가 못 정해", "그날만 봐줘", "그대로 먹을래"),
             "SCAN", List.of("반만 먹을게", "양은 그대로", "더 깎아줘", "그대로 먹을래"));
 
+    /**
+     * 제안 하한 비율 — 밀당이가 양보할 수 있는 마지노선.
+     * 없으면 "1포인트로 해줘" 한마디에 라면 80이 1이 된다(상한만 검사하던 시절의 구멍).
+     * 값은 폴백 단계표의 끝값 33%를 그대로 쓴다.
+     */
+    private static final float FLOOR_RATIO = 1 / 3f;
+
     private final HaggleSessionRepository sessionRepository;
     private final HaggleMessageRepository messageRepository;
     private final ItemRepository itemRepository;
@@ -308,10 +315,19 @@ public class HaggleService {
             return true;
         }
         return p.points() <= item.getOriginalPoints()
-                && p.points() >= 0
+                && p.points() >= floorOf(item)
                 && ("AMOUNT".equals(p.lever()) || "COMPOSITION".equals(p.lever()))
                 && AiGates.sameMenu(p.label(), item.getOriginalName())
                 && AiGates.clean(p.label());
+    }
+
+    /**
+     * 이 항목에서 밀당이가 내려갈 수 있는 최저 제안값.
+     * 원래값이 0~1인 항목에서 하한이 원래값을 넘어 모든 제안이 막히지 않도록 상한을 함께 건다.
+     */
+    private int floorOf(Item item) {
+        int target = item.getOriginalPoints();
+        return Math.min(target, Math.max(1, Math.round(target * FLOOR_RATIO)));
     }
 
     /** 규칙 폴백 — AMOUNT 절반 (명세 §15.8.2). chips=빈 리스트를 폴백 마커로 사용 */
