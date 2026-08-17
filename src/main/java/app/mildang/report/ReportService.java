@@ -106,7 +106,7 @@ public class ReportService {
         // mocked는 실제로 목일 때만 (다른 응답과 규칙을 맞춘다). 딥링크는 배포 도메인에서 온다 —
         // 하드코딩하면 공유 링크가 우리 서버가 아닌 곳을 가리켜 404가 난다.
         return new ShareCardResponse(demoEnabled ? Boolean.TRUE : null, report.getCardImageUrl(), 1080, 1920,
-                publicBaseUrl + "/c/" + report.getInviteCode(), "#밀가루흥정챌린지",
+                publicBaseUrl + "/v1/c/" + report.getInviteCode(), "#밀가루흥정챌린지",
                 report.getCardExpiresAt());
     }
 

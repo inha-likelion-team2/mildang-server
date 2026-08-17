@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>밀당 — 도전 받기</title>
+<meta property="og:title" content="밀당 · 넌 며칠 버티는데?">
+<meta property="og:description" content="밀가루 예산을 받고 밀당이와 흥정하며 버티는 챌린지">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Jua&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+    background: #ececec; font-family: 'Jua', -apple-system, BlinkMacSystemFont, sans-serif; color: #222;
+    padding: 20px;
+  }
+  .card {
+    width: 100%; max-width: 390px; background: #fff; border-radius: 26px; padding: 30px 24px 24px;
+    box-shadow: 0 8px 34px rgba(0,0,0,.12); text-align: center;
+  }
+  .disp { font-family: 'Caprasimo', 'Jua', sans-serif; }
+  .tag {
+    display: inline-block; background: #ececec; border-radius: 999px;
+    padding: 6px 14px; font-size: 12px; font-weight: 700; color: #333;
+  }
+  h1 { font-size: 21px; margin: 16px 0 0; line-height: 1.45; }
+  .finding {
+    margin-top: 18px; background: #f6f6f6; border-radius: 18px; padding: 16px 15px;
+    font-size: 14px; line-height: 1.6; color: rgba(0,0,0,.72); text-align: left;
+  }
+  .finding b { color: #222; }
+  .cta {
+    display: block; width: 100%; margin-top: 22px; background: #2b2b2b; color: #fff;
+    border: none; border-radius: 999px; padding: 17px; font-family: 'Caprasimo','Jua',sans-serif;
+    font-size: 16px; cursor: pointer; text-decoration: none;
+  }
+  .sub { margin-top: 12px; font-size: 12px; color: rgba(0,0,0,.45); line-height: 1.6; }
+  .muted { color: rgba(0,0,0,.5); font-size: 13.5px; line-height: 1.6; }
+</style>
+</head>
+<body>
+<div class="card" id="card">
+  <div class="muted">불러오는 중…</div>
+</div>
+<script>
+// 공유 카드 딥링크로 들어온 화면. /v1/c/{code} 로 포워드되므로 주소에서 코드를 읽는다.
+const CODE = (location.pathname.split('/').filter(Boolean).pop() || '').toUpperCase();
+const BASE = '/v1';
+const AVATAR = `<svg width="60" height="60" viewBox="0 0 64 64" fill="none">
+  <circle cx="32" cy="34" r="21" stroke="#222" stroke-width="3.2"/>
+  <circle cx="32" cy="10" r="4.4" stroke="#222" stroke-width="3.2"/>
+  <circle cx="24" cy="31" r="2.6" fill="#222"/><circle cx="40" cy="31" r="2.6" fill="#222"/>
+  <path d="M23 41c3.6 4 14.4 4 18 0" stroke="#222" stroke-width="3.2" stroke-linecap="round"/>
+</svg>`;
+
+const PERIOD = { W1: '1주', W2: '2주', W4: '4주' };
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function render(html) { document.getElementById('card').innerHTML = html; }
+
+function invalid(msg) {
+  render(`${AVATAR}
+    <h1>${esc(msg)}</h1>
+    <p class="sub">링크가 만료됐거나 주소가 잘못됐어요.</p>
+    <a class="cta" href="${BASE}/app/index.html">밀당 시작하기</a>`);
+}
+
+(async () => {
+  if (!/^[A-Z0-9]{4,10}$/.test(CODE)) { invalid('초대 코드를 못 읽었어요'); return; }
+  try {
+    const res = await fetch(`${BASE}/invites/${encodeURIComponent(CODE)}`);
+    if (!res.ok) { invalid('초대장을 찾지 못했어요'); return; }
+    const d = await res.json();
+    const period = PERIOD[d.period] || d.period || '';
+    render(`${AVATAR}
+      <div class="tag" style="margin-top:12px">#밀가루흥정챌린지</div>
+      <h1><b>${esc(d.inviterNickname || '친구')}</b>님이<br>${esc(period)} 챌린지를 끝내고<br>당신을 지목했어요</h1>
+      ${d.finding ? `<div class="finding">밀당이가 찾은 것<br><b>${esc(d.finding)}</b></div>` : ''}
+      <a class="cta" href="${BASE}/app/index.html">${esc(d.ctaLabel || '도전 받기')} →</a>
+      <p class="sub">밀가루 예산을 받고 밀당이와 <b>양·구성을 흥정</b>하며 버티는 챌린지.<br>끊지 마세요, 밀당하세요.</p>`);
+  } catch (e) {
+    invalid('잠시 후 다시 열어주세요');
+  }
+})();
+</script>
+</body>
+</html>

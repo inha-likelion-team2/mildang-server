@@ -27,7 +27,8 @@ public class WebConfig implements WebMvcConfigurer {
         registry.addInterceptor(authInterceptor)
                 .addPathPatterns("/**")
                 .excludePathPatterns("/auth/**", "/plans", "/health", "/demo/ping", "/error",
-                        "/invites/**", // 딥링크 랜딩은 로그인 전 진입 (§1)
+                        "/invites/**", // 딥링크 랜딩 데이터는 로그인 전 진입 (§1)
+                        "/c/**", "/invite/**", // 공유 링크로 들어온 사람 — 아직 계정이 없다
                         "/tester/**", // 테스트용 프론트 정적 파일 (실 프론트 완성 시 삭제)
                         "/app/**"); // 와이어프레임 충실판 데모 프론트 (실 프론트 완성 시 삭제)
     }

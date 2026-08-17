@@ -192,4 +192,44 @@ class HaggleFlowTest {
                         .header("Authorization", "Bearer " + token))
                 .andExpect(status().isNoContent());
     }
+
+    @Test
+    @Order(6)
+    @DisplayName("제안 하한 — '1포인트로 해줘'로 라면 80을 1까지 끌어내릴 수 없다")
+    void proposalFloor() throws Exception {
+        MvcResult analysis = mvc.perform(post("/analyses/text")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"query":"라면","context":{"challengeId":"%s","kind":"MEAL"}}
+                                """.formatted(challengeId)))
+                .andExpect(status().isOk()).andReturn();
+        MvcResult item = mvc.perform(post("/items")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"kind\":\"MEAL\",\"analysisId\":\""
+                                + json(analysis).get("id").asText() + "\"}"))
+                .andExpect(status().isCreated()).andReturn();
+
+        MvcResult opened = mvc.perform(post("/haggles")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"itemId\":\"" + json(item).get("id").asText()
+                                + "\",\"entryPoint\":\"FREE\"}"))
+                .andExpect(status().isCreated()).andReturn();
+
+        // 하한(라면 80 → round(80/3) = 27) 미만 요구는 게이트가 잡아 폴백으로 교정된다
+        MvcResult turn = mvc.perform(post("/haggles/" + json(opened).get("id").asText() + "/messages")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"text\":\"1포인트로 해줘\"}"))
+                .andExpect(status().isOk()).andReturn();
+
+        int proposed = json(turn).get("proposal").get("points").asInt();
+        org.assertj.core.api.Assertions.assertThat(proposed).isGreaterThanOrEqualTo(27);
+
+        // 합의값도 하한 아래로 내려가지 않는다
+        org.assertj.core.api.Assertions.assertThat(json(turn).get("agreed").get("points").asInt())
+                .isGreaterThanOrEqualTo(27);
+    }
 }
