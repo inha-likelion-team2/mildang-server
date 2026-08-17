@@ -28,6 +28,6 @@ public class CheckinController {
 
     @PutMapping("/today")
     public PutResponse put(@CurrentUser String userId, @Valid @RequestBody PutRequest request) {
-        return checkinService.put(userId, request.answers());
+        return checkinService.put(userId, request.answers(), request.weightKg());
     }
 }

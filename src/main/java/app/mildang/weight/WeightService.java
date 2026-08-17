@@ -62,6 +62,13 @@ public class WeightService {
         return new WeightResponse(todayPoint, series(challenge.getId()));
     }
 
+    /** 그날의 체중 값 — 체크인 화면이 이미 넣은 값을 다시 보여줄 때 쓴다 (없으면 null) */
+    @Transactional(readOnly = true)
+    public BigDecimal todayValue(String challengeId, LocalDate date) {
+        return weightRepository.findByChallengeIdAndDate(challengeId, date)
+                .map(WeightLog::getWeightKg).orElse(null);
+    }
+
     /** 대시보드 그래프용 — 챌린지 시작부터 기록된 날만, 날짜순 */
     public List<WeightPoint> series(String challengeId) {
         return weightRepository.findByChallengeIdOrderByDateAsc(challengeId).stream()

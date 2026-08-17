@@ -7,7 +7,8 @@ import java.util.List;
 public class CheckinDtos {
 
     public record TodayResponse(String date, int dayIndex, boolean done, Answers answers,
-                                List<Question> questions, CheckinDays checkinDays) {
+                                List<Question> questions, CheckinDays checkinDays,
+                                java.math.BigDecimal weightKg) {
     }
 
     public record Answers(@NotNull ConditionValue BLOAT, @NotNull ConditionValue SKIN,
@@ -21,10 +22,15 @@ public class CheckinDtos {
     public record CheckinDays(int answered, int elapsed, int total) {
     }
 
-    public record PutRequest(@NotNull @Valid Answers answers) {
+    /** weightKg는 선택 — 화면에 «건너뛰어도 괜찮아요»가 있고, 컨디션만 남기는 날도 있다 */
+    public record PutRequest(@NotNull @Valid Answers answers,
+                             @jakarta.validation.constraints.DecimalMin("20.0")
+                             @jakarta.validation.constraints.DecimalMax("300.0")
+                             java.math.BigDecimal weightKg) {
     }
 
     public record PutResponse(String id, String date, boolean done, Answers answers,
-                              String message, CheckinDays checkinDays) {
+                              String message, CheckinDays checkinDays,
+                              java.math.BigDecimal weightKg) {
     }
 }

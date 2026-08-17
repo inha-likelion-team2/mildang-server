@@ -139,6 +139,47 @@ class WeightLogTest {
 
     @Test
     @Order(6)
+    @DisplayName("★ 컨디션 체크인에서 체중을 함께 보낼 수 있다 — 같은 날 기록에 합쳐진다")
+    void checkinCarriesWeight() throws Exception {
+        mvc.perform(put("/checkins/today")
+                        .header("Authorization", auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"answers":{"BLOAT":"BAD","SKIN":"MID","DROWSY":"GOOD"},"weightKg":56.2}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.done").value(true))
+                .andExpect(jsonPath("$.weightKg").value(56.2));
+
+        // 체크인 화면을 다시 열면 넣었던 값이 그대로 보인다
+        mvc.perform(get("/checkins/today").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.weightKg").value(56.2));
+
+        // 별도 엔드포인트로 넣은 것과 같은 자리에 쌓인다 — 하루 한 건이라 개수가 늘지 않는다
+        mvc.perform(get("/weights").header("Authorization", auth()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.today.weightKg").value(56.2))
+                .andExpect(jsonPath("$.series.length()").value(1));
+    }
+
+    @Test
+    @Order(7)
+    @DisplayName("체중 없이 컨디션만 보내도 된다 — 「건너뛰어도 괜찮아요」")
+    void checkinWithoutWeight() throws Exception {
+        mvc.perform(put("/checkins/today")
+                        .header("Authorization", auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"answers":{"BLOAT":"GOOD","SKIN":"GOOD","DROWSY":"GOOD"}}
+                                """))
+                .andExpect(status().isOk())
+                // 앞서 넣어둔 체중은 지워지지 않는다
+                .andExpect(jsonPath("$.weightKg").value(56.2));
+    }
+
+    @Test
+    @Order(8)
     @DisplayName("사람 몸무게가 아닌 값은 오타로 보고 거절한다")
     void rejectsAbsurdValues() throws Exception {
         for (String bad : new String[] {"5.0", "500.0", "-3"}) {

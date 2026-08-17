@@ -8,7 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
-| 2026-08-17 (5) | **체중 기록 신설** — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
+| 2026-08-17 (5) | **체중 기록 신설** — 컨디션 체크인에서 함께 받는다(`checkins/today`의 `weightKg`, 선택). — `GET /weights` · `PUT /weights/today`, `current.weights[]`(대시보드 그래프). 값만 저장하고 예산·잔액·리포트에는 관여하지 않는다 |
 | 2026-08-17 (4) | **`POST /scans/{id}/menus/{menuId}/comment` 신설** — 화면 4b에서 하단 메뉴를 탭하면 상단 메모가 그 메뉴로 바뀐다. 메뉴마다 코멘트를 따로 만든다 |
 | 2026-08-17 (3) | **설문 2문항 추가** — `survey.portion`(한 번 먹는 양, 예산에 0.7/1.0/1.3배) · `survey.situation`(가장 많이 먹는 상황, **예산엔 영향 없음** · AI용 저장). 둘 다 선택 |
 | 2026-08-17 (2) | **예산 화면을 확정 피그마(온보딩_03)에 맞춤** — estimate 응답에 `slider{min,max,step,recommended}` 신설, `POST /budget`이 **제안값 3개가 아니라 범위 안의 아무 값이나** 받고 `optionKey`는 선택으로, **`PATCH /challenges/{id}/budget` 신설**(나중에 조정) |
@@ -841,22 +841,27 @@
   "questions": [ { "key": "BLOAT",  "label": "더부룩함", "desc": "식후 속 상태" },
                  { "key": "SKIN",   "label": "피부",     "desc": "트러블·건조" },
                  { "key": "DROWSY", "label": "낮 졸림",  "desc": "식곤증 정도" } ],
-  "checkinDays": { "answered": 3, "elapsed": 4, "total": 7 }
+  "checkinDays": { "answered": 3, "elapsed": 4, "total": 7 },
+  "weightKg": null
 }
 ```
 
 - `answers`는 아직 제출 전이면 `null`입니다.
 - `checkinDays`는 **원시 수치만** 줍니다(비율·임계 없음). "3/7일 기록" 같은 표기는 프론트 몫입니다.
+- `weightKg`는 그날 기록된 체중(없으면 `null`) — 화면을 다시 열었을 때 넣었던 값을 보여주는 용도입니다.
 
 ### `PUT /checkins/today` → 200 — 멱등 덮어쓰기
 
 ```json
 // 요청
-{ "answers": { "BLOAT": "BAD", "SKIN": "MID", "DROWSY": "GOOD" } }
+{ "answers": { "BLOAT": "BAD", "SKIN": "MID", "DROWSY": "GOOD" },
+  "weightKg": 56.2 }
 ```
 
 - ⚠ **키는 대문자 그대로**입니다(`BLOAT`·`SKIN`·`DROWSY`).
 - **세 항목 모두 필수**입니다. 하나라도 빠지면 400.
+- **`weightKg`는 선택**입니다(화면의 「건너뛰어도 괜찮아요」). 보내면 같은 날짜의 체중 기록에 함께 남습니다 — `PUT /weights/today`로 넣은 것과 **같은 자리**라 하루 한 건입니다.
+- 체중 없이 컨디션만 보내도 **이미 넣어둔 그날 체중은 지워지지 않습니다.**
 - 같은 날 다시 보내면 덮어씁니다(에러 아님).
 
 ```json
