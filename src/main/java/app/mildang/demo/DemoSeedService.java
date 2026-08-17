@@ -43,16 +43,19 @@ public class DemoSeedService {
     private final ItemRepository itemRepository;
     private final CheckinRepository checkinRepository;
     private final PaymentRepository paymentRepository;
+    private final app.mildang.weight.WeightRepository weightRepository;
 
     private int runningBalance; // 차감 시드 항목의 잔액 스냅샷 재현용
     private int runningPrepaid;
 
     public DemoSeedService(ChallengeRepository challengeRepository, ItemRepository itemRepository,
-                           CheckinRepository checkinRepository, PaymentRepository paymentRepository) {
+                           CheckinRepository checkinRepository, PaymentRepository paymentRepository,
+                            app.mildang.weight.WeightRepository weightRepository) {
         this.challengeRepository = challengeRepository;
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
         this.paymentRepository = paymentRepository;
+        this.weightRepository = weightRepository;
     }
 
     @Transactional
@@ -62,6 +65,7 @@ public class DemoSeedService {
         if (!challengeIds.isEmpty()) {
             itemRepository.deleteAll(itemRepository.findByChallengeIdIn(challengeIds));
             checkinRepository.deleteAll(checkinRepository.findByChallengeIdIn(challengeIds));
+            weightRepository.deleteAll(weightRepository.findByChallengeIdIn(challengeIds));
             challengeRepository.deleteAllById(challengeIds);
         }
         paymentRepository.deleteAll(paymentRepository.findByUserId(userId));
@@ -98,6 +102,10 @@ public class DemoSeedService {
         checkin(c, 3, ConditionValue.BAD, ConditionValue.MID, ConditionValue.BAD);
         checkin(c, 2, ConditionValue.MID, ConditionValue.GOOD, ConditionValue.MID);
         checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        weight(c, 3, "58.0");
+        weight(c, 2, "55.0");
+        weight(c, 1, "54.0");
+        weight(c, 0, "54.0");
         return finalize(c);
     }
 
@@ -255,6 +263,22 @@ public class DemoSeedService {
         runningBalance -= points;
         runningPrepaid += points;
         itemRepository.save(item);
+    }
+
+    /** 대시보드 진행률 카드가 일차별 체중을 같이 그린다 (확정 193:1220) */
+    private void weight(Challenge c, int daysAgo, String kg) {
+        LocalDate date = LogicalDate.of(Instant.now()).minusDays(daysAgo);
+        app.mildang.weight.WeightLog log = new app.mildang.weight.WeightLog();
+        log.setId(Ids.next(Ids.Prefix.WEIGHT));
+        log.setChallengeId(c.getId());
+        log.setUserId(c.getUserId());
+        log.setDate(date);
+        log.setDayIndex((int) ChronoUnit.DAYS.between(LogicalDate.of(c.getStartedAt()), date) + 1);
+        log.setWeightKg(new java.math.BigDecimal(kg));
+        Instant at = date.atTime(22, 0).atZone(LogicalDate.KST).toInstant();
+        log.setCreatedAt(at);
+        log.setUpdatedAt(at);
+        weightRepository.save(log);
     }
 
     private void checkin(Challenge c, int daysAgo, ConditionValue bloat, ConditionValue skin, ConditionValue drowsy) {

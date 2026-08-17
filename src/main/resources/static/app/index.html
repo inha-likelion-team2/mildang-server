@@ -44,11 +44,11 @@
 
   /* 주 버튼 — 노란 둥근 사각형 (식사 하기 / 분석 하기 / 설정 하기 / 완주 성공) */
   .pill-btn { border: none; background: var(--y); color: var(--ink); border-radius: 14px;
-    padding: 18px; font-size: 17px; font-weight: 900; letter-spacing: -.02em; }
+    padding: 20px; font-size: 18px; font-weight: 900; letter-spacing: -.03em; }
   .pill-btn:hover { background: var(--y-deep); }
   /* 보조 버튼 — 회색 둥근 사각형 (컨디션 체크 / 밀당 하기) */
   .ghost-btn { background: var(--gray); border: none; border-radius: 14px;
-    padding: 16px 4px; font-size: 15px; font-weight: 800; color: var(--ink); }
+    padding: 20px 4px; font-size: 18px; font-weight: 900; color: var(--ink); letter-spacing: -.03em; }
   .ghost-btn:hover { background: #ebebeb; }
   .chip { background: var(--gray); border: none; border-radius: 999px; padding: 9px 14px;
     font-size: 13px; font-weight: 700; color: var(--ink); }
@@ -59,16 +59,13 @@
   .back-head { margin-top: 44px; display: flex; align-items: center; gap: 10px; }
   .back-head svg { opacity: .55; cursor: pointer; flex: none; }
   .logo { display: flex; align-items: center; gap: 8px; }
-  .logo .mark { width: 30px; height: 30px; border-radius: 50%; background: var(--ink); position: relative; }
-  .logo .mark::after { content: ''; position: absolute; right: 4px; top: 5px; width: 7px; height: 7px;
-    border-radius: 50%; background: var(--y); }
-  .logo .name { font-size: 19px; font-weight: 900; letter-spacing: -.03em; }
+  .logo .name { font-size: 22px; font-weight: 900; letter-spacing: -.04em; }
 
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 20px; }
   .card.sel { background: var(--y-soft); border-color: var(--y); }
   .bubble-row { display: flex; gap: 8px; align-items: flex-start; }
-  .bubble { background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 13px 15px;
-    font-size: 13.5px; line-height: 1.6; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
+  .bubble { background: #fff; border: none; border-radius: 18px; padding: 16px 18px;
+    font-size: 14px; line-height: 1.65; box-shadow: 0 3px 14px rgba(0,0,0,.09); }
   .item-card { background: #fff; border-radius: 16px; padding: 14px 16px; border: 1px solid var(--line); }
   .item-card.hl { border-color: var(--y); background: var(--y-soft); }
   /* 값은 노란 동그라미 안의 큰 숫자 (피그마 3b 카드) */
@@ -91,12 +88,12 @@
   /* 진행률 카드 — 일차 / 체크 / 체중 3단 */
   .prog { display: flex; justify-content: space-between; gap: 2px; }
   .prog .d { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 7px; }
-  .prog .d .lab { font-size: 11px; font-weight: 700; color: var(--muted); }
-  .prog .d .dot { width: 22px; height: 22px; border-radius: 50%; background: var(--line);
+  .prog .d .lab { font-size: 12px; font-weight: 800; color: var(--muted); }
+  .prog .d .dot { width: 26px; height: 26px; border-radius: 50%; background: var(--line);
     display: flex; align-items: center; justify-content: center; color: #fff; font-size: 12px; }
   .prog .d.on .lab { color: var(--ink); }
-  .prog .d.on .dot { background: var(--y); color: var(--ink); }
-  .prog .d .kg { font-size: 11px; color: var(--muted); min-height: 14px; }
+  .prog .d.on .dot { background: var(--y); color: #fff; font-weight: 900; }
+  .prog .d .kg { font-size: 12px; color: var(--muted); min-height: 16px; }
 
   .ovl { position: absolute; inset: 0; display: none; z-index: 20; }
   .ovl.on { display: flex; }
@@ -144,7 +141,7 @@
 
 <!-- S0 · 스플래시 / 로그인 -->
 <div class="scr on" id="s-splash">
-  <div style="margin-top:56px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:56px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
   <h2 class="disp" style="margin-top:90px;font-size:32px;line-height:1.35">밀가루,<br>끊지 말고<br>밀당하세요.</h2>
   <p style="margin-top:16px;font-size:13.5px;color:var(--muted);line-height:1.6">밀가루 예산을 설정하고,<br>먹는 걸 기록하면 AI가 균형을 알려드려요</p>
   <div class="grow"></div>
@@ -154,7 +151,7 @@
 
 <!-- S1 · 온보딩 기간 선택 -->
 <div class="scr" id="s-plan">
-  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
   <h2 class="disp" style="margin-top:34px;font-size:28px">얼마나 밀당 해볼까요?</h2>
   <p style="margin-top:8px;font-size:13px;color:var(--muted)">처음이라면 1주부터 가볍게 추천해요.</p>
   <div id="plan-list" style="margin-top:22px;display:flex;flex-direction:column;gap:10px"></div>
@@ -164,7 +161,7 @@
 
 <!-- S1p · 결제 (데모 목) -->
 <div class="scr" id="s-pay">
-  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
   <h2 class="disp" style="margin-top:30px;font-size:27px;line-height:1.35" id="pay-head">시작 해볼까요?</h2>
   <p style="margin-top:10px;font-size:13px;color:var(--muted);line-height:1.6" id="pay-desc"></p>
   <div class="card sel" style="margin-top:24px">
@@ -189,7 +186,7 @@
 <!-- S2 · 온보딩 3문항 + 예산 제시 -->
 <div class="scr" id="s-survey">
   <div style="margin-top:44px;display:flex;align-items:center">
-    <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+    <div class="logo" style="flex:1"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
     <button onclick="estimate()" style="background:none;border:none;font-size:14px;font-weight:800;color:var(--y-deep)">저장</button>
   </div>
   <h2 class="disp" style="margin-top:26px;font-size:28px;line-height:1.3">평소 식습관을<br>알려주세요</h2>
@@ -223,23 +220,23 @@
 
 <!-- S3 · 대시보드 -->
 <div class="scr" id="s-dash">
-  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
 
   <!-- 남은 예산 카드 — 52/85 · 게이지 · 잔액 N ・앞으로 N끼 (확정 193:1220) -->
   <div class="card" style="margin-top:22px;padding:18px 20px">
     <div style="display:flex;align-items:center;justify-content:space-between">
-      <div style="font-size:15px;font-weight:800">남은 예산</div>
-      <div class="tagpill" id="d-label"></div>
+      <div style="font-size:17px;font-weight:900">남은 예산</div>
+      <div class="tagpill" style="font-size:12px;padding:6px 12px" id="d-label"></div>
     </div>
-    <div style="margin-top:6px;display:flex;align-items:baseline">
-      <div class="disp" style="font-size:44px;line-height:1.1" id="d-balance">–</div>
-      <div class="disp" style="font-size:30px;color:var(--muted)" id="d-total"></div>
+    <div style="margin-top:8px;display:flex;align-items:baseline">
+      <div class="disp" style="font-size:52px;line-height:1.05" id="d-balance">–</div>
+      <div class="disp" style="font-size:34px;color:var(--muted)" id="d-total"></div>
     </div>
-    <div style="margin-top:14px;position:relative;height:12px;background:var(--line);border-radius:999px">
+    <div style="margin-top:18px;position:relative;height:14px;background:var(--line);border-radius:999px">
       <div id="d-gauge" style="height:100%;border-radius:999px;background:var(--y);animation:gaugeFill 1.1s cubic-bezier(.2,.8,.2,1);width:0%"></div>
-      <div id="d-knob" style="position:absolute;top:-6px;left:0;width:24px;height:24px;border-radius:50%;background:#fff;border:3px solid var(--y);transform:translateX(-50%)"></div>
+      <div id="d-knob" style="position:absolute;top:-7px;left:0;width:28px;height:28px;border-radius:50%;background:#fff;border:3px solid var(--y);box-shadow:0 1px 4px rgba(0,0,0,.12);transform:translateX(-50%)"></div>
     </div>
-    <div style="margin-top:12px;font-size:12.5px;color:var(--muted)" id="d-sub"></div>
+    <div style="margin-top:14px;font-size:13px;color:var(--muted)" id="d-sub"></div>
   </div>
 
   <!-- 밀당이 말풍선 (AI 팁) -->
@@ -249,16 +246,16 @@
   </div>
 
   <!-- 오늘의 알림 / 미리 약속을 잡았나요? — 좌우 두 장 -->
-  <div style="margin-top:16px;display:flex;gap:10px">
-    <div class="card sel" style="flex:1;padding:14px">
-      <div style="font-size:14px;font-weight:900">오늘의 알림</div>
-      <div style="margin-top:8px;font-size:11.5px;color:var(--muted)" id="d-notice-date"></div>
-      <div style="margin-top:2px;font-size:12px;font-weight:600;line-height:1.45" id="d-notice-text"></div>
+  <div style="margin-top:18px;display:flex;gap:10px;align-items:stretch">
+    <div class="card sel" style="flex:1;padding:16px">
+      <div style="font-size:13.5px;font-weight:900;letter-spacing:-.05em">오늘의 알림</div>
+      <div style="margin-top:12px;font-size:12.5px;color:var(--muted)" id="d-notice-date"></div>
+      <div style="margin-top:3px;font-size:12px;font-weight:600;line-height:1.5;letter-spacing:-.03em" id="d-notice-text"></div>
     </div>
-    <div class="card" style="flex:1;padding:14px;cursor:pointer;position:relative" onclick="nav('promise')">
-      <div style="font-size:14px;font-weight:900">미리 약속을 잡았나요?</div>
-      <div style="margin-top:8px;font-size:11.5px;color:var(--muted);line-height:1.45">사전 결제하면 예산 관리가<br>더 쉬워져요</div>
-      <div style="position:absolute;right:12px;bottom:12px;color:var(--muted);font-size:17px">›</div>
+    <div class="card" style="flex:1;padding:16px;cursor:pointer;position:relative" onclick="nav('promise')">
+      <div style="font-size:13.5px;font-weight:900;line-height:1.4;letter-spacing:-.05em">미리 약속을 잡았나요?</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--muted);line-height:1.5;letter-spacing:-.03em">사전 결제하면 예산 관리가<br>더 쉬워져요</div>
+      <div style="position:absolute;right:14px;bottom:14px;color:var(--muted);font-size:20px">›</div>
     </div>
   </div>
 
@@ -274,7 +271,7 @@
     <div class="prog" style="margin-top:14px" id="d-prog"></div>
   </div>
 
-  <button onclick="nav('records')" style="margin-top:12px;background:#fff;border:1.5px dashed var(--line);border-radius:14px;padding:15px;font-size:14px;font-weight:800;color:var(--muted)">+ 기록 보기</button>
+  <button onclick="nav('records')" style="margin-top:14px;background:#fff;border:1.5px dashed #DADADA;border-radius:14px;padding:18px;font-size:15px;font-weight:800;color:var(--muted)">+ 기록 보기</button>
 
   <div id="d-prepaid" style="display:flex;flex-direction:column;gap:8px;margin-top:12px"></div>
   <div id="d-expired" style="display:flex;flex-direction:column;gap:8px;margin-top:8px"></div>
@@ -284,7 +281,7 @@
 
 <!-- S3a · 약속 사전 결재 -->
 <div class="scr" id="s-promise">
-  <div style="margin-top:44px" class="logo"><div class="mark"></div><div class="name">밀당</div></div>
+  <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
   <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round" onclick="nav('dash')" style="opacity:.5;cursor:pointer"><path d="M15 18l-6-6 6-6"/></svg>
     <div style="flex:1">
@@ -355,7 +352,7 @@
 <!-- S4b · 스캔 결과 -->
 <div class="scr" id="s-scanresult">
   <div style="margin-top:44px;display:flex;align-items:center">
-    <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+    <div class="logo" style="flex:1"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
     <button onclick="nav('camera')" style="background:none;border:none;font-size:14px;font-weight:800;color:var(--y-deep)">재촬영</button>
   </div>
   <div style="margin-top:18px;display:flex;align-items:center;gap:10px">
@@ -486,7 +483,7 @@
 <div class="ovl" id="haggle">
   <div style="position:absolute;inset:0;background:#fff;display:flex;flex-direction:column">
     <div style="padding:0 22px;margin-top:44px;display:flex;align-items:center;gap:10px">
-      <div class="logo" style="flex:1"><div class="mark"></div><div class="name">밀당</div></div>
+      <div class="logo" style="flex:1"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
       <div style="font-size:12px;font-weight:700;color:var(--muted)" id="h-turn"></div>
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#222" stroke-width="2.75" stroke-linecap="round" style="opacity:.45;cursor:pointer" onclick="abandonHaggle()"><path d="M18 6L6 18M6 6l12 12"/></svg>
     </div>
@@ -603,7 +600,10 @@ let nextChallengeRec = null, reportData = null;
 
 // 밀당이 아바타 (밀가루 반죽) — data-av="크기" 자리에 일괄 렌더
 function avatar(s) {
-  return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" style="flex:none"><circle cx="24" cy="27" r="16" fill="#fff" stroke="#2b2b2b" stroke-width="2.5"/><circle cx="24" cy="10" r="4.5" fill="#fff" stroke="#2b2b2b" stroke-width="2.5"/><circle cx="18.5" cy="25" r="2.1" fill="#222"/><circle cx="29.5" cy="25" r="2.1" fill="#222"/><path d="M19 31 Q24 35.5 29 31" fill="none" stroke="#222" stroke-width="2" stroke-linecap="round"/></svg>`;
+  // 확정 와이어프레임의 밀당이 — 노란 원 머리 + 둥근 어깨 (얼굴 없음)
+  return `<svg width="${s}" height="${s}" viewBox="0 0 48 48" style="flex:none">
+    <circle cx="24" cy="15" r="9" fill="#FFD93B"/>
+    <path d="M8 44c0-8.8 7.2-16 16-16s16 7.2 16 16z" fill="#FFD93B"/></svg>`;
 }
 document.querySelectorAll('[data-av]').forEach(e => e.outerHTML = avatar(e.dataset.av));
 
