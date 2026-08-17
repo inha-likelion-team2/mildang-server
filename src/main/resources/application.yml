@@ -7,6 +7,13 @@ spring:
     multipart:
       max-file-size: 10MB      # 명세 §5.3 — 이미지 10MB 이하 (Spring 기본 1MB라 명시 필수)
       max-request-size: 12MB
+  web:
+    resources:
+      cache:
+        cachecontrol:
+          # 데모 프론트(/app·/tester)를 배포한 뒤에도 브라우저가 예전 화면을 계속 띄우는 문제.
+          # 새 탭에서도 캐시가 살아서 «고쳤는데 그대로»로 보인다 — 정적 자원은 캐시하지 않는다.
+          no-store: true
 
 server:
   servlet:
