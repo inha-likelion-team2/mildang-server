@@ -67,6 +67,14 @@ public class Challenge {
     @Enumerated(EnumType.STRING)
     private SurveyLevel surveySnack;
 
+    /** 한 번 먹을 때 양 — 예산 추정에 곱한다 (0.7 / 1.0 / 1.3) */
+    @Enumerated(EnumType.STRING)
+    private Portion surveyPortion;
+
+    /** 가장 많이 먹는 상황 — 예산에는 반영하지 않고, 나중에 AI가 쓰도록 저장만 한다 */
+    @Enumerated(EnumType.STRING)
+    private Situation surveySituation;
+
     @Enumerated(EnumType.STRING)
     private OptionKey optionKey;
 

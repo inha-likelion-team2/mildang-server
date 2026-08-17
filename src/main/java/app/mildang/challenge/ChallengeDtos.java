@@ -26,7 +26,17 @@ public class ChallengeDtos {
     }
 
     // ---- 설문 ----
-    public record Survey(@NotNull SurveyLevel noodle, @NotNull SurveyLevel bread, @NotNull SurveyLevel snack) {
+    /**
+     * 화면 «온보딩_03» 설문. noodle·bread·snack은 1번 문항(주당 빈도),
+     * portion은 2번(한 번 먹을 때 양), situation은 3번(가장 많이 먹는 상황).
+     * 뒤 둘은 선택 — 안 보내면 portion=NORMAL로 보고, situation은 비워둔다.
+     */
+    public record Survey(@NotNull SurveyLevel noodle, @NotNull SurveyLevel bread, @NotNull SurveyLevel snack,
+                         Portion portion, Situation situation) {
+
+        public Survey {
+            portion = portion != null ? portion : Portion.NORMAL;
+        }
     }
 
     public record EstimateRequest(@NotNull @Valid Survey survey) {

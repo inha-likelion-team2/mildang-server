@@ -53,7 +53,17 @@ public final class BudgetPolicy {
     }
 
     public static Result estimate(SurveyLevel noodle, SurveyLevel bread, SurveyLevel snack, Period period) {
-        int weekly = NOODLE[noodle.ordinal()] + BREAD[bread.ordinal()] + SNACK[snack.ordinal()];
+        return estimate(noodle, bread, snack, Portion.NORMAL, period);
+    }
+
+    /**
+     * 한 번 먹는 양(portion)을 곱한다 — 같은 횟수라도 양이 다르면 예산이 달라야 한다.
+     * 먹는 «상황»(Situation)은 예산에 반영하지 않는다 (전부 1.0, 팀 결정 2026-08-17).
+     */
+    public static Result estimate(SurveyLevel noodle, SurveyLevel bread, SurveyLevel snack,
+                                  Portion portion, Period period) {
+        int base = NOODLE[noodle.ordinal()] + BREAD[bread.ordinal()] + SNACK[snack.ordinal()];
+        int weekly = round5(base * (portion != null ? portion : Portion.NORMAL).multiplier());
         int multiplier = period.weeks();
 
         List<Option> options = List.of(

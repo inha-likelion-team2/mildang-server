@@ -108,6 +108,49 @@ class BudgetSliderTest {
     }
 
     @Test
+    @Order(2)
+    @DisplayName("★ 설문 2번 «한 번 먹는 양» — 많이 1.3배 · 조금 0.7배 · 보통 1.0배")
+    void portionScalesTheEstimate() throws Exception {
+        int normal = estimateWeekly("\"portion\":\"NORMAL\"");
+        int large = estimateWeekly("\"portion\":\"LARGE\"");
+        int small = estimateWeekly("\"portion\":\"SMALL\"");
+        int omitted = estimateWeekly(null); // 안 보내면 보통으로 본다
+
+        org.assertj.core.api.Assertions.assertThat(omitted).isEqualTo(normal);
+        org.assertj.core.api.Assertions.assertThat(large)
+                .as("많이 먹어요 = 1.3배").isEqualTo(round5(normal * 1.3));
+        org.assertj.core.api.Assertions.assertThat(small)
+                .as("조금 먹어요 = 0.7배").isEqualTo(round5(normal * 0.7));
+    }
+
+    @Test
+    @Order(2)
+    @DisplayName("설문 3번 «먹는 상황»은 예산을 바꾸지 않는다 (전부 1.0, AI용으로 저장만)")
+    void situationDoesNotChangeBudget() throws Exception {
+        int base = estimateWeekly(null);
+        for (String situation : new String[] {"MEAL", "SNACK", "LATE_NIGHT", "IRREGULAR"}) {
+            org.assertj.core.api.Assertions.assertThat(estimateWeekly("\"situation\":\"" + situation + "\""))
+                    .as("%s 는 예산에 영향을 주면 안 된다", situation).isEqualTo(base);
+        }
+    }
+
+    private static int round5(double v) {
+        return (int) (Math.round(v / 5.0) * 5);
+    }
+
+    /** 설문 1번은 고정하고 뒤 문항만 바꿔가며 주간 추정치를 받아온다 */
+    private int estimateWeekly(String extra) throws Exception {
+        String survey = "{\"noodle\":\"2-3\",\"bread\":\"0-1\",\"snack\":\"4+\""
+                + (extra != null ? "," + extra : "") + "}";
+        MvcResult r = mvc.perform(post("/challenges/" + challengeId + "/budget/estimate")
+                        .header("Authorization", auth())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"survey\":" + survey + "}"))
+                .andExpect(status().isOk()).andReturn();
+        return json(r).get("estimatedWeekly").asInt();
+    }
+
+    @Test
     @Order(3)
     @DisplayName("★ 제안값이 아닌 임의값도 확정된다 — 슬라이더가 만들 수 있는 값이면")
     void confirmsArbitrarySliderValue() throws Exception {

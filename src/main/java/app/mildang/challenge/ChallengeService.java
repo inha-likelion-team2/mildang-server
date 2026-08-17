@@ -175,8 +175,8 @@ public class ChallengeService {
         if (challenge.getStatus() != ChallengeStatus.ONBOARDING) {
             throw new ApiException(ErrorCode.BUDGET_ALREADY_SET);
         }
-        BudgetPolicy.Result result =
-                BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
+        BudgetPolicy.Result result = BudgetPolicy.estimate(
+                survey.noodle(), survey.bread(), survey.snack(), survey.portion(), challenge.getPeriod());
         return new EstimateResponse(result.estimatedWeekly(), result.recommended(), result.cutRatePercent(),
                 result.rationale(), ANCHORS, result.options(), result.totalBudget(), result.slider());
     }
@@ -188,8 +188,8 @@ public class ChallengeService {
             throw new ApiException(ErrorCode.BUDGET_ALREADY_SET);
         }
         Survey survey = resolveSurvey(userId, challenge, request.survey());
-        BudgetPolicy.Result estimate =
-                BudgetPolicy.estimate(survey.noodle(), survey.bread(), survey.snack(), challenge.getPeriod());
+        BudgetPolicy.Result estimate = BudgetPolicy.estimate(
+                survey.noodle(), survey.bread(), survey.snack(), survey.portion(), challenge.getPeriod());
 
         // 요청 budget은 주간값. 디자인(온보딩_03)이 슬라이더로 바뀌면서 «제안값 3개 중 하나»가 아니라
         // 범위 안의 아무 값이나 받는다. optionKey는 보내면 기록하고, 없으면 값에서 가장 가까운 걸 추정한다.
@@ -206,6 +206,8 @@ public class ChallengeService {
         challenge.setSurveyNoodle(survey.noodle());
         challenge.setSurveyBread(survey.bread());
         challenge.setSurveySnack(survey.snack());
+        challenge.setSurveyPortion(survey.portion());
+        challenge.setSurveySituation(survey.situation());
         challenge.setOptionKey(optionKey);
         challenge.setBudgetWeekly(request.budget());
         challenge.setBudget(totalBudget);
@@ -251,7 +253,7 @@ public class ChallengeService {
         }
         BudgetPolicy.Result estimate = BudgetPolicy.estimate(
                 challenge.getSurveyNoodle(), challenge.getSurveyBread(), challenge.getSurveySnack(),
-                challenge.getPeriod());
+                challenge.getSurveyPortion(), challenge.getPeriod());
         if (!BudgetPolicy.inRange(weeklyBudget, estimate.slider())) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "예산은 " + estimate.slider().min() + "~" + estimate.slider().max()
@@ -281,7 +283,9 @@ public class ChallengeService {
         Challenge previous = challengeRepository
                 .findFirstByUserIdAndSurveyNoodleNotNullOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_FAILED, "설문이 필요해요.", "survey", null));
-        return new Survey(previous.getSurveyNoodle(), previous.getSurveyBread(), previous.getSurveySnack());
+        // 재사용할 때도 양·상황을 함께 가져온다 — 안 그러면 재대결에서 예산이 달라진다
+        return new Survey(previous.getSurveyNoodle(), previous.getSurveyBread(), previous.getSurveySnack(),
+                previous.getSurveyPortion(), previous.getSurveySituation());
     }
 
     @Transactional
