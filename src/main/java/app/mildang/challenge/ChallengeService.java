@@ -232,6 +232,11 @@ public class ChallengeService {
             userRepository.findById(userId).ifPresent(u -> u.setFreeTrialUsed(true));
         }
 
+        // 설문에서 받은 시작 체중 — 챌린지가 ACTIVE가 된 뒤에 남긴다(온보딩 중엔 기록할 자리가 없다)
+        if (request.weightKg() != null) {
+            weightService.putToday(userId, request.weightKg());
+        }
+
         return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getPeriod(),
                 challenge.getBudget(), challenge.getBalance(),
                 challenge.getStartedAt(), challenge.getEndsAt(), new StartTip(tip));

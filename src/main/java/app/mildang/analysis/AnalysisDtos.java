@@ -34,6 +34,7 @@ public class AnalysisDtos {
     public record RecentResponse(List<RecentEntry> recent) {
     }
 
-    public record RecentEntry(String name) {
+    /** 화면 칩이 「라면 80」처럼 값까지 보여준다 — 값은 항상 original 기준 */
+    public record RecentEntry(String name, String unit, Integer points, Integer pm) {
     }
 }

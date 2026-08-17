@@ -16,6 +16,7 @@ import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,9 @@ import tools.jackson.databind.ObjectMapper;
 
 @Service
 public class AnalysisService {
+
+    /** 화면 칩 개수 */
+    private static final int RECENT_COUNT = 4;
 
     private static final Logger log = LoggerFactory.getLogger(AnalysisService.class);
 
@@ -137,16 +141,18 @@ public class AnalysisService {
         return e.candidates() != null && e.candidates().size() == 3;
     }
 
+    /** 화면 「최근 내역」 칩 4개 — 최근에 분석한 메뉴를 중복 없이, 값과 함께 */
     @Transactional(readOnly = true)
     public RecentResponse recent(String userId) {
-        Set<String> names = new LinkedHashSet<>();
+        Map<String, RecentEntry> byName = new LinkedHashMap<>();
         for (Analysis analysis : analysisRepository.findTop20ByUserIdAndResolvedTrueOrderByCreatedAtDesc(userId)) {
-            names.add(analysis.getName());
-            if (names.size() == 3) {
+            byName.putIfAbsent(analysis.getName(), new RecentEntry(analysis.getName(),
+                    analysis.getUnit(), analysis.getPoints(), analysis.getPm()));
+            if (byName.size() == RECENT_COUNT) {
                 break;
             }
         }
-        return new RecentResponse(names.stream().map(RecentEntry::new).toList());
+        return new RecentResponse(List.copyOf(byName.values()));
     }
 
     /** 항목 생성용 — 소유·resolved·미만료 검증 (만료 시 404, 명세 §6.3) */

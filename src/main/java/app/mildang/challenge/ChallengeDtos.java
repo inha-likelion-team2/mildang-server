@@ -58,7 +58,11 @@ public class ChallengeDtos {
      * 슬라이더로 바뀌면서 «제안값 3개 중 하나»가 아니라 범위 안의 아무 값이나 받는다.
      * optionKey는 선택 — 안 보내면 서버가 값에서 가장 가까운 걸 기록한다.
      */
-    public record ConfirmRequest(@Valid Survey survey, OptionKey optionKey, @NotNull Integer budget) {
+    /** weightKg는 선택 — 화면 「체중은 어떻게 되나요?」. 시작 체중으로 1일차에 남는다 */
+    public record ConfirmRequest(@Valid Survey survey, OptionKey optionKey, @NotNull Integer budget,
+                                 @jakarta.validation.constraints.DecimalMin("20.0")
+                                 @jakarta.validation.constraints.DecimalMax("300.0")
+                                 java.math.BigDecimal weightKg) {
     }
 
     /** 예산 조정 — "나중에도 언제든지 조정할 수 있어요" */

@@ -10,8 +10,13 @@ import java.util.List;
 
 public class ItemDtos {
 
+    /**
+     * 약속(PROMISE)은 화면이 「언제 예요? · 날짜 입력」이라 <b>날짜</b>로 받는다(`promiseDate`).
+     * 예전 방식인 `weekday`도 계속 받는다 — 둘 중 하나만 주면 된다.
+     */
     public record CreateItemRequest(@NotNull ItemKind kind, String analysisId, String scanId,
-                                    String menuId, String presetId, Weekday weekday) {
+                                    String menuId, String presetId, Weekday weekday,
+                                    String promiseDate) {
     }
 
     public record OriginalView(String name, String unit, int points, int pm,

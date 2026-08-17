@@ -7,6 +7,7 @@ import app.mildang.challenge.ChallengeService;
 import app.mildang.common.error.ApiException;
 import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
+import app.mildang.common.model.Weekday;
 import app.mildang.common.time.LogicalDate;
 import app.mildang.item.ItemDtos.AdjustedView;
 import app.mildang.item.ItemDtos.CreateItemRequest;
@@ -132,8 +133,18 @@ public class ItemService {
             throw new ApiException(ErrorCode.VALIDATION_FAILED,
                     "analysisId / scanId+menuId / presetId 중 정확히 하나만 보내주세요.", "source", null);
         }
-        if (request.kind() == ItemKind.PROMISE && request.weekday() == null) {
-            throw new ApiException(ErrorCode.VALIDATION_FAILED, "약속에는 요일이 필요해요.", "weekday", null);
+        // 약속은 날짜(화면 「날짜 입력」)나 요일 중 하나로 온다. 날짜를 주면 요일을 여기서 뽑는다
+        Weekday promiseWeekday = request.weekday();
+        LocalDate promiseDate = null;
+        if (request.kind() == ItemKind.PROMISE) {
+            if (request.promiseDate() != null && !request.promiseDate().isBlank()) {
+                promiseDate = parseDate(request.promiseDate());
+                promiseWeekday = Weekday.of(promiseDate.getDayOfWeek());
+                requireWithinChallenge(challenge, promiseDate);
+            } else if (promiseWeekday == null) {
+                throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                        "약속 날짜를 골라주세요.", "promiseDate", null);
+            }
         }
 
         // 스캔 메뉴 한 칸 = 살아있는 항목 하나. 이미 있으면 그걸 돌려준다 — 밀당한 항목을 두고
@@ -158,7 +169,7 @@ public class ItemService {
         item.setChallengeId(challenge.getId());
         item.setKind(request.kind());
         item.setStatus(ItemStatus.PENDING);
-        item.setWeekday(request.weekday());
+        item.setWeekday(promiseWeekday);
         item.setLogicalDate(logicalDate);
         item.setExpiresAt(request.kind() == ItemKind.MEAL ? LogicalDate.expiryOf(logicalDate) : null);
         item.setCreatedAt(now);
@@ -323,6 +334,16 @@ public class ItemService {
                         e.getValue().stream().mapToInt(Item::effectivePoints).sum()))
                 .toList();
         return new ItemDtos.RecordedDaysResponse(ym.toString(), days);
+    }
+
+    /** 약속은 이번 판 안에서만 잡을 수 있다 — 끝난 뒤 날짜를 잡으면 어디에도 귀속되지 않는다 */
+    private void requireWithinChallenge(Challenge challenge, LocalDate date) {
+        LocalDate start = LogicalDate.of(challenge.getStartedAt());
+        LocalDate end = start.plusDays(challenge.getTotalDays() - 1L);
+        if (date.isBefore(start) || date.isAfter(end)) {
+            throw new ApiException(ErrorCode.VALIDATION_FAILED,
+                    "챌린지 기간(" + start + " ~ " + end + ") 안의 날짜로 골라주세요.", "promiseDate", null);
+        }
     }
 
     private static LocalDate parseDate(String date) {
