@@ -26,4 +26,13 @@ public enum Weekday {
     public String korean() {
         return korean;
     }
+
+    public static Weekday of(DayOfWeek dayOfWeek) {
+        for (Weekday value : values()) {
+            if (value.dayOfWeek == dayOfWeek) {
+                return value;
+            }
+        }
+        throw new IllegalArgumentException("알 수 없는 요일: " + dayOfWeek);
+    }
 }

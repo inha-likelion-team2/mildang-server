@@ -24,6 +24,8 @@ import app.mildang.common.error.ApiException;
 import app.mildang.common.error.ErrorCode;
 import app.mildang.common.id.Ids;
 import app.mildang.common.time.LogicalDate;
+import app.mildang.common.model.Weekday;
+import app.mildang.item.ItemKind;
 import app.mildang.item.Item;
 import app.mildang.item.ItemRepository;
 import app.mildang.item.ItemStatus;
@@ -365,7 +367,35 @@ public class ChallengeService {
                 new CheckinView(doneToday, dueAt),
                 expiredConfirm,
                 weightService.series(challenge.getId()),
-                progress(challenge, now));
+                progress(challenge, now),
+                todayNotice(challenge, now));
+    }
+
+    /**
+     * 「오늘의 알림」 — 오늘 잡혀 있는 약속. 없으면 문구만 주고 목록은 빈 배열이다
+     * (카드 자체는 화면에 늘 있으므로 null로 비우지 않는다).
+     */
+    private ChallengeDtos.TodayNoticeView todayNotice(Challenge challenge, Instant now) {
+        LocalDate today = LogicalDate.of(now);
+        Weekday todayWeekday = Weekday.of(today.getDayOfWeek());
+
+        List<ChallengeDtos.TodayPromiseView> promises = itemRepository
+                .findByChallengeIdAndKindAndStatusInOrderByCreatedAtDesc(
+                        challenge.getId(), ItemKind.PROMISE,
+                        List.of(ItemStatus.PENDING, ItemStatus.HAGGLED, ItemStatus.PREPAID))
+                .stream()
+                .filter(i -> i.getWeekday() == todayWeekday)
+                .map(i -> new ChallengeDtos.TodayPromiseView(i.getId(), i.getOriginalName(),
+                        i.effectivePoints(), i.getWeekday().name(),
+                        i.getStatus() == ItemStatus.PREPAID))
+                .toList();
+
+        String text = switch (promises.size()) {
+            case 0 -> "오늘 잡힌 약속은 없어요";
+            case 1 -> "오늘 " + promises.getFirst().name() + " 약속이 있어요";
+            default -> "오늘 약속이 " + promises.size() + "건 있어요";
+        };
+        return new ChallengeDtos.TodayNoticeView(today.toString(), text, promises);
     }
 
     /**

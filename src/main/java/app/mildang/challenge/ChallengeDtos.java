@@ -78,7 +78,7 @@ public class ChallengeDtos {
                                   List<PrepaidItemView> prepaidItems,
                                   CheckinView checkin, List<ExpiredConfirmView> expiredConfirm,
                                   List<app.mildang.weight.WeightDtos.WeightPoint> weights,
-                                  ProgressView progress) {
+                                  ProgressView progress, TodayNoticeView todayNotice) {
     }
 
     /** 오늘(05:00 경계) 기록된 것 — 메인 화면 "오늘 먹은 것" 블록. 비어 있으면 items=[] */
@@ -110,6 +110,17 @@ public class ChallengeDtos {
     }
 
     public record CheckinView(boolean doneToday, Instant dueAt) {
+    }
+
+    /**
+     * 화면 「오늘의 알림」 카드 — <b>오늘 잡혀 있는 약속</b>을 보여준다 (2026-08-17 확인).
+     * 밀당이 말풍선의 AI 팁({@link TipView})과는 다른 자리다.
+     */
+    public record TodayNoticeView(String date, String text, List<TodayPromiseView> promises) {
+    }
+
+    /** prepaid=true면 이미 예산에서 미리 빼둔 약속 */
+    public record TodayPromiseView(String id, String name, int points, String weekday, boolean prepaid) {
     }
 
     /**

@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-17 (9) | **`current.todayNotice` 신설** — 대시보드 「오늘의 알림」 카드는 **오늘 잡혀 있는 약속**이다(AI 팁과 다른 자리). 오른쪽 「미리 약속을 잡았나요?」는 3a로 가는 **화면 이동뿐**이라 API 없음 |
 | 2026-08-17 (8) | **확정 와이어프레임 갱신 반영** — `current`에 `progress` 신설(진행률 체크박스), `GET /items?date=` 정렬을 **「최근 입력한 순」**으로 바꾸고 `weights`·`progress` 동봉 |
 | 2026-08-17 (7) | **카카오 로그인 실검증** — prod에서 `idToken`을 카카오 JWKS로 검증한다(서명·`iss`·`aud`·`exp`). 위조·타 앱·타 발급자 토큰은 `TOKEN_INVALID`, 만료는 `TOKEN_EXPIRED`. **demo/local은 기존대로 통과**(문자열이 곧 계정) |
 | 2026-08-17 (6) | **기록 보기 화면** — `GET /items`에 `date` 필터 추가(주면 그날치만 + `day{date,count,totalPoints}`), 캘린더용 **`GET /items/dates` 신설**(그 달에 기록이 있는 날) |
@@ -360,7 +361,10 @@
   "weights": [ { "date": "2026-08-15", "dayIndex": 1, "weightKg": 58.0 } ],
   "progress": { "dayIndex": 4, "totalDays": 7,
                 "days": [ { "dayIndex": 1, "date": "2026-08-14",
-                            "checkin": true, "recorded": true, "future": false } ] }
+                            "checkin": true, "recorded": true, "future": false } ] },
+  "todayNotice": { "date": "2026-08-17", "text": "오늘 치킨 약속이 있어요",
+                   "promises": [ { "id": "itm_...", "name": "치킨", "points": 70,
+                                   "weekday": "MON", "prepaid": false } ] }
 }
 ```
 
@@ -378,6 +382,11 @@
 | `progress` | 화면 「1주 챌린지 진행률」의 **체크박스 N칸**. `days`는 시작일부터 `totalDays`만큼 **빠짐없이** 옵니다 |
 | `progress.days[].checkin` / `.recorded` | 그날 **컨디션 체크인을 했는지** / **기록을 남겼는지**. 체크박스를 어느 쪽으로 칠할지는 화면이 정하세요 — 그래서 둘 다 줍니다 |
 | `progress.days[].future` | 아직 오지 않은 날. 체크박스를 비워두면 됩니다 |
+| `todayNotice` | 화면 「오늘의 알림」 카드 = **오늘 잡혀 있는 약속**입니다. ⚠ 밀당이 말풍선의 AI 팁(`tip`)과 **다른 자리**입니다 |
+| `todayNotice.text` | 그대로 노출 가능한 문구 — 0건 「오늘 잡힌 약속은 없어요」 · 1건 「오늘 치킨 약속이 있어요」 · 2건 이상 「오늘 약속이 2건 있어요」 |
+| `todayNotice.promises` | 오늘 요일로 잡힌 약속(`PENDING`·`HAGGLED`·`PREPAID`). **약속이 없어도 카드는 남습니다** — `promises: []`, `todayNotice`는 `null`이 되지 않습니다 |
+| `todayNotice.promises[].prepaid` | 이미 예산에서 미리 빼둔 약속인지. 선차감해도 카드에서 사라지지 않습니다 |
+| 「미리 약속을 잡았나요?」 버튼 | 3a 약속 사전 결제로 가는 **화면 이동뿐** — 호출할 API가 없습니다 |
 | `prepaidItems[]` | 선차감된 약속 카드 (전체) |
 | `checkin.doneToday` | `false`면 체크인 버튼에 뱃지. `dueAt`은 오늘 22:00 KST |
 | `weights[]` | 체중 기록 그래프 재료 — `{date, dayIndex, weightKg}`, 날짜 오름차순. 기록이 없으면 `[]` |
