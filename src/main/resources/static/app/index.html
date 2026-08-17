@@ -129,6 +129,14 @@
   #dev .row { display: flex; gap: 6px; flex-wrap: wrap; }
   #dev input { border: 1px solid var(--line); border-radius: 10px; padding: 9px 13px; font-size: 13px; flex: 1; }
 
+  /* 예산 슬라이더 (확정 85:853) */
+  #b-slider { -webkit-appearance: none; appearance: none; height: 14px; border-radius: 999px;
+    background: var(--line); outline: none; }
+  #b-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--y); box-shadow: 0 1px 4px rgba(0,0,0,.15); cursor: pointer; }
+  #b-slider::-moz-range-thumb { width: 28px; height: 28px; border-radius: 50%;
+    background: #fff; border: 3px solid var(--y); cursor: pointer; }
+
   #share { flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 20px; }
   #share .card916 { position: relative; width: 300px; height: 533px; border-radius: 22px; overflow: hidden;
     background: #fff; border: 1.5px solid var(--ink); display: flex; flex-direction: column; padding: 30px 28px;
@@ -198,27 +206,36 @@
       style="flex:1;background:none;border:none;font-size:14.5px;font-family:inherit;font-weight:700;outline:none">
     <span style="font-size:13px;color:var(--muted)">kg</span>
   </div>
-  <div id="est-box" style="display:none">
-    <div class="card sel" style="margin-top:20px">
-      <div style="font-size:13px;font-weight:800" id="est-label">1주 예산</div>
-      <div style="display:flex;align-items:baseline;gap:8px;margin-top:4px">
-        <div class="disp" style="font-size:44px;line-height:1" id="est-num">85</div>
-        <div style="font-size:13px;color:var(--muted)">밀<span id="est-total" style="margin-left:6px"></span></div>
-      </div>
-      <p style="margin:10px 0 0;font-size:13px;line-height:1.6" id="est-rationale"></p>
-      <div id="est-anchors" style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap"></div>
-    </div>
-    <div class="bubble-row" style="margin-top:14px">
-      <span data-av="34"></span>
-      <div class="bubble" id="est-bubble"></div>
-    </div>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px" id="est-options"></div>
-  </div>
   <div class="grow"></div>
   <button class="pill-btn" style="margin-top:16px" onclick="estimate()">시작 하기</button>
 </div>
 
 <!-- S3 · 대시보드 -->
+<!-- 온보딩_03-1 · 예산 설정 (확정 85:853) -->
+<div class="scr" id="s-budget">
+  <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
+  <h2 class="disp" style="margin-top:34px;font-size:28px;line-height:1.35" id="b-title">1주 예산을<br>설정해볼까요?</h2>
+  <p style="margin-top:10px;font-size:13px;color:var(--muted)">평소 밀가루 섭취량을 떠올려서 예산을 정해보세요</p>
+
+  <div style="margin-top:36px;display:flex;flex-direction:column;align-items:center">
+    <svg width="118" height="104" viewBox="0 0 34 30" fill="none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="24" cy="9" r="4" fill="#FFD93B"/></svg>
+    <div class="disp" style="margin-top:20px;font-size:40px" id="b-value">–</div>
+  </div>
+
+  <input type="range" id="b-slider" style="margin-top:24px;width:100%" oninput="onBudgetSlide(this.value)">
+  <div style="margin-top:8px;display:flex;justify-content:space-between;font-size:13px;color:var(--muted)">
+    <span>가볍게</span><span>넉넉하게</span>
+  </div>
+
+  <div class="card" style="margin-top:28px;text-align:center;background:var(--gray);border:none">
+    <div style="font-size:13.5px;font-weight:800">예산이 높을수록 더 유연하게 관리할 수 있어요</div>
+    <div style="margin-top:4px;font-size:12.5px;color:var(--muted)">나중에도 언제든지 조정할 수 있어요</div>
+  </div>
+
+  <div class="grow"></div>
+  <button class="pill-btn" onclick="submitBudget()">설정 하기</button>
+</div>
+
 <div class="scr" id="s-dash">
   <div style="margin-top:44px" class="logo"><svg class="mark" width="34" height="30" viewBox="0 0 34 30" fill="none" style="flex:none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#1A1A1A"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#1A1A1A"/><circle cx="25" cy="8.5" r="3.2" fill="#FFD93B"/></svg><div class="name">밀당</div></div>
 
@@ -781,7 +798,6 @@ const SURVEY_LABELS = { '0-1': '적음', '2-3': '보통', '4+': '많음' };
 const PORTION_OPTS = [['SMALL', '조금 먹어요'], ['NORMAL', '보통이에요'], ['LARGE', '많이 먹어요']];
 const SITUATION_OPTS = [['MEAL', '식사'], ['SNACK', '간식'], ['LATE_NIGHT', '야식'], ['IRREGULAR', '불규칙']];
 function initSurvey() {
-  $('est-box').style.display = 'none';
   const freq = `<div>
       <div style="font-size:14px;font-weight:800">평소 일주일에 얼마나 자주 드세요?</div>
       <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">` +
@@ -810,26 +826,28 @@ function pickSurvey(k, v) {
   surveyPick[k] = v;
   initSurvey();
 }
+let budgetSlider = null;
+// 설문 「시작 하기」 → 예산 설정 화면으로 넘어간다 (확정 141:1157 → 85:853)
 async function estimate() {
   const r = await call('POST', `/challenges/${challengeId}/budget/estimate`, { survey: surveyPick });
-  const asis = r.options.find(o => o.key === 'AS_IS') || r.options[0];
-  const hard = r.options.find(o => o.key === 'HARD');
-  $('est-label').textContent = '1주 예산';
-  $('est-num').textContent = asis.budget;
-  $('est-total').textContent = currentPeriod !== 'W1' ? `· 기간 총 ${asis.totalBudget}` : '';
-  $('est-rationale').textContent = r.rationale;
-  $('est-anchors').innerHTML = r.anchors.map(a =>
-    `<div style="font-size:12px;background:#fdfdfd;border:1px solid rgba(0,0,0,.06);border-radius:999px;padding:5px 10px">${a.label} <strong class="disp" style="color:#333">${a.points}</strong></div>`).join('');
-  $('est-bubble').innerHTML = hard ? `빡세게 가고 싶으면 <strong class="disp" style="color:#2b2b2b">${hard.budget}</strong>까지 내려드릴 수 있어요.` : '이 정도면 해볼 만해요.';
-  const order = ['HARD', 'AS_IS', 'EASY'];
-  const names = { HARD: '더 빡세게', AS_IS: '이대로', EASY: '여유있게' };
-  $('est-options').innerHTML = order.map(k => {
-    const o = r.options.find(x => x.key === k); if (!o) return '';
-    return k === 'AS_IS'
-      ? `<button class="pill-btn" onclick="confirmBudget('${o.key}',${o.budget})">이대로 ${o.budget}밀로 시작</button>`
-      : `<button class="ghost-btn" onclick="confirmBudget('${o.key}',${o.budget})">${names[k]} · ${o.budget}밀</button>`;
-  }).join('');
-  $('est-box').style.display = 'block';
+  budgetSlider = r.slider;
+  const el = $('b-slider');
+  el.min = r.slider.min; el.max = r.slider.max; el.step = r.slider.step;
+  el.value = r.slider.recommended;
+  $('b-title').innerHTML = `${PERIOD_LABEL[currentPeriod] || '1주'} 예산을<br>설정해볼까요?`;
+  onBudgetSlide(r.slider.recommended);
+  nav('budget');
+}
+function onBudgetSlide(v) {
+  $('b-value').textContent = `${v}밀`;
+  // 트랙을 값까지 노랗게 — 브라우저 기본 슬라이더엔 채움이 없다
+  const pct = budgetSlider
+    ? Math.round((v - budgetSlider.min) / (budgetSlider.max - budgetSlider.min) * 100) : 0;
+  $('b-slider').style.background =
+    `linear-gradient(90deg, var(--y) 0%, var(--y) ${pct}%, var(--line) ${pct}%, var(--line) 100%)`;
+}
+async function submitBudget() {
+  await confirmBudget(null, Number($('b-slider').value));
 }
 async function confirmBudget(key, weekly) {
   const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: surveyPick, optionKey: key, budget: weekly, weightKg: startWeight() });
