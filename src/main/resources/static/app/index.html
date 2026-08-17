@@ -596,7 +596,7 @@ const CONF = { CERTAIN: '확실', HIGH: '높음', MEDIUM: '보통' };
 let token = null, refreshToken = null, challengeId = null, reportChallengeId = null,
     challenge = null, budget = null;
 let currentPeriod = null, currentPrice = 0, planData = null, selectedPlan = null;
-let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3' };
+let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3', portion: 'NORMAL', situation: 'MEAL' };
 let selectedPromiseDate = null, sheetCtx = null, scanId = null, scanData = null;
 let haggleId = null, haggleTarget = null, haggleBack = 'meal', haggleAgreed = null;
 let nextChallengeRec = null, reportData = null;
@@ -777,21 +777,38 @@ async function payAndCreate() {
 const SURVEY_QS = [
   { key: 'noodle', label: '면류' }, { key: 'bread', label: '빵류' }, { key: 'snack', label: '과자·간식' }];
 const SURVEY_OPTS = ['0-1', '2-3', '4+'];
-const SURVEY_LABELS = { '0-1': '0–1', '2-3': '2–3', '4+': '4회+' };
+const SURVEY_LABELS = { '0-1': '적음', '2-3': '보통', '4+': '많음' };
+const PORTION_OPTS = [['SMALL', '조금 먹어요'], ['NORMAL', '보통이에요'], ['LARGE', '많이 먹어요']];
+const SITUATION_OPTS = [['MEAL', '식사'], ['SNACK', '간식'], ['LATE_NIGHT', '야식'], ['IRREGULAR', '불규칙']];
 function initSurvey() {
   $('est-box').style.display = 'none';
-  $('survey-rows').innerHTML =
-    `<div><div style="font-size:14px;font-weight:800">평소 일주일에 얼마나 자주 드세요?</div>
-       <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">` +
+  const freq = `<div>
+      <div style="font-size:14px;font-weight:800">평소 일주일에 얼마나 자주 드세요?</div>
+      <div style="margin-top:10px;display:flex;flex-direction:column;gap:8px">` +
     SURVEY_QS.map(q => `<div style="display:flex;align-items:center;gap:10px">
         <div style="width:62px;font-size:13.5px;font-weight:800">${q.label}</div>
         <div class="seg3" style="flex:1" id="sv-${q.key}">` +
       SURVEY_OPTS.map(o => `<button class="${surveyPick[q.key] === o ? 'on' : ''}" onclick="pickSurvey('${q.key}','${o}')">${SURVEY_LABELS[o]}</button>`).join('') +
       `</div></div>`).join('') + `</div></div>`;
+
+  const portion = `<div>
+      <div style="font-size:14px;font-weight:800">한 번 먹을 때 양은 어느 정도인가요?</div>
+      <div class="seg3" style="margin-top:10px" id="sv-portion">` +
+    PORTION_OPTS.map(([k, l]) => `<button class="${surveyPick.portion === k ? 'on' : ''}" onclick="pickSurvey('portion','${k}')">${l}</button>`).join('') +
+    `</div></div>`;
+
+  // 상황은 예산에 영향이 없다 — AI가 나중에 쓰라고 값만 남긴다 (2026-08-17 결정)
+  const situation = `<div>
+      <div style="font-size:14px;font-weight:800">밀가루를 가장 많이 먹는 상황은 언제인가요?</div>
+      <div class="seg3" style="margin-top:10px" id="sv-situation">` +
+    SITUATION_OPTS.map(([k, l]) => `<button class="${surveyPick.situation === k ? 'on' : ''}" onclick="pickSurvey('situation','${k}')">${l}</button>`).join('') +
+    `</div></div>`;
+
+  $('survey-rows').innerHTML = freq + portion + situation;
 }
 function pickSurvey(k, v) {
   surveyPick[k] = v;
-  [...$('sv-' + k).children].forEach(b => b.classList.toggle('on', b.textContent === SURVEY_LABELS[v]));
+  initSurvey();
 }
 async function estimate() {
   const r = await call('POST', `/challenges/${challengeId}/budget/estimate`, { survey: surveyPick });
