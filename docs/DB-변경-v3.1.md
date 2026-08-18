@@ -10,47 +10,54 @@
 
 | 구분 | 내용 |
 | --- | --- |
-| **추가 테이블** | `weight_logs` — 체중 기록 (1건) |
-| **추가 컬럼** | `challenges.survey_portion` · `challenges.survey_situation` · `scan_menus.comment` · `haggle_sessions.challenge_id` |
+| **추가 테이블** | `weight_log` — 체중 기록 (1건) |
+| **추가 컬럼** | `challenge.survey_portion` · `challenge.survey_situation` · `scan_menu.comment` · `haggle_session.challenge_id` |
 | **추가 열거형** | `Portion`(`SMALL` `NORMAL` `LARGE`) · `Situation`(`MEAL` `SNACK` `LATE_NIGHT` `IRREGULAR`) |
 | **열거값 변경** | `PayProvider` — `IAP_APPLE` `IAP_GOOGLE` **삭제**, **`TOSS` 추가** (웹앱이라 IAP가 아니라 PG) |
 | **에러 코드 추가** | `HAGGLE_QUOTA_EXCEEDED`(409) · `PAYMENT_FAILED`(400) · `PAYMENT_AMOUNT_MISMATCH`(400) |
 | **산식 변경** | 예산이 **3옵션 선택 → 슬라이더 범위 내 임의값**. `budget_option_key`는 선택값이 되고 `cut_rate_percent`는 사후 분류용으로만 남음 |
-| **⚠ 명명 불일치** | 실제 생성 테이블명이 이 문서의 복수형과 다름 — **DB §0 참조** |
+| **명명 규칙 확정** | 테이블명은 **단수형이 정본** (v3.0의 복수형 표기는 DB §0의 대응표로 읽을 것) |
 
 ---
 
-## 0. ⚠ 먼저 — 테이블 명명이 문서와 다릅니다
+## 0. 테이블 명명 — **단수형이 정본입니다** (2026-08-18 결정)
 
-v3.0 문서는 전 테이블을 **복수형**(`challenges` `items` …)으로 적었지만, 현재 코드가 실제로 만드는 이름은 **일부만 복수형**입니다. JPA에서 `@Table(name = …)`을 지정한 것만 복수형이고 나머지는 클래스명 그대로 단수형이 됩니다.
+v3.0 문서는 전 테이블을 복수형(`challenges` `items` …)으로 적었지만, **실제 DB에 만들어지는 이름은 대부분 단수형**입니다. JPA에서 `@Table(name = …)`을 지정한 4개만 복수형이고 나머지는 클래스명이 그대로 내려갑니다.
 
-| 문서 (v3.0) | 실제 생성 | 지정 여부 |
+**문서를 코드에 맞추기로 정했습니다.** 코드를 바꾸는 쪽이 오히려 위험해서입니다 — demo는 `ddl-auto: update`라 `@Table`을 붙이면 **이름을 바꿔주는 게 아니라 빈 테이블을 새로 만들고**, 기존 데이터는 옛 테이블에 남습니다. 조용히 데이터가 사라진 것처럼 보입니다.
+
+### 정본 테이블명 (14개)
+
+| 정본 (= 실제 DB) | v3.0 문서 표기 | 비고 |
 | --- | --- | --- |
-| `users` | `users` | ✅ 지정됨 |
-| `analyses` | `analyses` | ✅ 지정됨 |
-| `reports` | `reports` | ✅ 지정됨 |
-| `dashboard_tips` | `dashboard_tips` | ✅ 지정됨 |
-| `challenges` | **`challenge`** | ❌ 기본 규칙 |
-| `items` | **`item`** | ❌ |
-| `payments` | **`payment`** | ❌ |
-| `checkins` | **`checkin`** | ❌ |
-| `scans` | **`scan`** | ❌ |
-| `scan_menus` | **`scan_menu`** | ❌ |
-| `haggle_sessions` | **`haggle_session`** | ❌ |
-| `haggle_messages` | **`haggle_message`** | ❌ |
-| `user_sessions` | **`user_session`** | ❌ |
-| (신규) `weight_logs` | **`weight_log`** | ❌ |
+| `users` | `users` | 그대로 |
+| `analyses` | `analyses` | 그대로 |
+| `reports` | `reports` | 그대로 |
+| `dashboard_tips` | `dashboard_tips` | 그대로 |
+| **`challenge`** | ~~`challenges`~~ | 단수 |
+| **`item`** | ~~`items`~~ | 단수 |
+| **`payment`** | ~~`payments`~~ | 단수 |
+| **`checkin`** | ~~`checkins`~~ | 단수 |
+| **`scan`** | ~~`scans`~~ | 단수 |
+| **`scan_menu`** | ~~`scan_menus`~~ | 단수 |
+| **`haggle_session`** | ~~`haggle_sessions`~~ | 단수 |
+| **`haggle_message`** | ~~`haggle_messages`~~ | 단수 |
+| **`user_session`** | ~~`user_sessions`~~ | 단수 |
+| **`weight_log`** | (신규) | 단수 |
 
-**동작에는 문제가 없습니다** — Hibernate가 만들고 Hibernate가 검증하므로 자기들끼리는 맞습니다. 하지만 **이 문서를 보고 SQL을 쓰면 "테이블 없음"이 납니다.** 운영 쿼리·마이그레이션 스크립트·백오피스가 전부 걸립니다.
+> v3.0 문서를 읽을 때는 위 표로 옮겨 읽으세요. **컬럼명·제약·인덱스는 v3.0 그대로 유효**하고 테이블명만 다릅니다.
 
-**정하고 가야 합니다. 둘 중 하나입니다.**
+### 이 결정이 영향을 주지 않는 곳
 
-1. **코드를 문서에 맞춘다** — 엔티티 10개에 `@Table(name = "…")`를 붙여 복수형으로. 이미 만들어진 demo DB는 테이블 rename이 필요합니다.
-2. **문서를 코드에 맞춘다** — v3.1 문서의 테이블명을 단수형으로 고칩니다. 코드 변경은 없습니다.
+| 대상 | 영향 | 이유 |
+| --- | --- | --- |
+| **AI 서버** | 없음 | DB를 쓰지 않는 stateless 서비스입니다. 레포에 ORM·마이그레이션 파일이 하나도 없습니다 |
+| **프론트엔드** | 없음 | REST JSON의 필드명(camelCase)과 ID(`chl_…`)만 봅니다. 테이블명이 응답에 새는 곳이 없습니다 |
+| **백엔드 코드** | 없음 | 네이티브 SQL이 없습니다. 유일한 `@Query`도 JPQL이라 **엔티티명**(`HaggleSession`)을 씁니다 |
 
-⚠ **prod는 `ddl-auto: validate`라 이름이 어긋나면 기동 자체가 실패합니다.** 지금 정해두지 않으면 배포 당일에 드러납니다.
+⚠ 영향을 받는 것은 **사람이 직접 쓰는 SQL**뿐입니다 — 운영 쿼리, 마이그레이션 스크립트, 백오피스, DB 콘솔.
 
-> 아래 DDL은 **실제 생성 이름(단수형)** 기준으로 적었습니다. 1번으로 정하면 이름만 바꿔 쓰세요.
+> **복수형으로 통일하고 싶다면 실 DB가 생기기 전에** 하세요. prod DB가 만들어진 뒤에는 rename 마이그레이션이 필요하고, `ddl-auto: validate`라 순서를 틀리면 기동이 실패합니다.
 
 ---
 
@@ -63,7 +70,7 @@ v3.0 문서는 전 테이블을 **복수형**(`challenges` `items` …)으로 �
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
 | `id` | text | PK | `wgt_{ULID}` — §0.7 prefix 목록에 `wgt` 추가 |
-| `challenge_id` | text | FK → challenges, NOT NULL | |
+| `challenge_id` | text | FK → challenge, NOT NULL | |
 | `user_id` | text | FK → users, NOT NULL | |
 | `date` | date | NOT NULL, **UNIQUE(challenge_id, date)** | §0.8 경계(05:00 KST) 기준. **`PUT` 멱등의 근거** — UPSERT |
 | `day_index` | smallint | NOT NULL | 기록 시점에 확정. 그래프의 X축 |
@@ -85,7 +92,7 @@ CREATE TABLE weight_log (
 );
 ```
 
-- **하루 한 건입니다.** `checkins`와 같은 규칙 — 같은 날 다시 보내면 덮어씁니다.
+- **하루 한 건입니다.** `checkin`과 같은 규칙 — 같은 날 다시 보내면 덮어씁니다.
 - **들어오는 경로가 셋인데 자리는 하나입니다** — `POST /challenges/{id}/budget`의 `weightKg`(시작 체중), `PUT /checkins/today`의 `weightKg`, `PUT /weights/today`. 어느 쪽으로 넣든 같은 행에 쌓입니다.
 - `day_index`는 v3.0 원칙 #5(파생값 저장 금지)에 어긋나 보이지만, **기록 시점의 일차를 고정**해야 합니다. 데모의 날짜 이동(`/demo/advance-day`)처럼 `started_at`이 움직이면 재계산값이 흔들립니다.
 
@@ -135,16 +142,16 @@ ALTER TABLE scan_menu ADD CONSTRAINT ck_scan_menu_comment
     CHECK (comment IS NULL OR length(comment) <= 90);
 ```
 
-- v3.0의 `scans.recommendation_comment`(스캔당 1건, 백엔드가 고른 추천 메뉴)는 **그대로 남습니다.** 이 컬럼은 **사용자가 탭한 메뉴**의 코멘트라 자리가 다릅니다.
+- v3.0의 `scan.recommendation_comment`(스캔당 1건, 백엔드가 고른 추천 메뉴)는 **그대로 남습니다.** 이 컬럼은 **사용자가 탭한 메뉴**의 코멘트라 자리가 다릅니다.
 - ⚠ **가격을 수정하면(`PATCH /scans/{id}/menus/{menuId}`) `null`로 지웁니다.** 옛 값 기준의 코멘트가 남으면 화면이 거짓말을 합니다.
 
 ### 2.3 `haggle_session` — 챌린지 귀속
 
-요금제별 **밀당 대화 횟수**를 «이번 판» 기준으로 세기 위해 필요합니다. v3.0에는 `item_id`만 있어서 챌린지를 알려면 `items`를 조인해야 했습니다.
+요금제별 **밀당 대화 횟수**를 «이번 판» 기준으로 세기 위해 필요합니다. v3.0에는 `item_id`만 있어서 챌린지를 알려면 `item`을 조인해야 했습니다.
 
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
-| `challenge_id` | text | FK → challenges, NOT NULL | |
+| `challenge_id` | text | FK → challenge, NOT NULL | |
 
 ```sql
 -- 기존 행이 있는 환경(demo)은 채운 뒤 NOT NULL을 건다
@@ -246,10 +253,9 @@ v3.0의 목록(`usr` `pay` `chl` `anl` `scn` `itm` `hgl` `chk` `tip`)에 하나 
 
 ## 6. 반영 순서 (prod 배포 시)
 
-1. **DB §0의 명명 문제를 먼저 정합니다.** 안 정하면 아래 DDL의 테이블명이 틀립니다.
-2. DDL 적용 — §1(신규 테이블) → §2(컬럼) → §3.1(CHECK 교체) 순서. `haggle_session`은 UPDATE를 끼워야 합니다.
-3. 애플리케이션 배포
-4. 기동 확인 — `prod`는 `ddl-auto: validate`라 **누락이 있으면 기동 자체가 실패**하므로 즉시 드러납니다.
+1. DDL 적용 — §1(신규 테이블) → §2(컬럼) → §3.1(CHECK 교체) 순서. `haggle_session`은 UPDATE를 끼워야 합니다.
+2. 애플리케이션 배포
+3. 기동 확인 — `prod`는 `ddl-auto: validate`라 **누락이 있으면 기동 자체가 실패**하므로 즉시 드러납니다.
 
 ---
 
@@ -259,4 +265,4 @@ v3.0의 목록(`usr` `pay` `chl` `anl` `scn` `itm` `hgl` `chk` `tip`)에 하나 
 
 특히 `item`에 컬럼을 더하지 않았습니다 — 확정 화면(193:1295)이 약속을 **날짜**로 받지만(`promiseDate`), 서버가 요일을 뽑아 기존 `weekday` 컬럼에 넣습니다. **저장 모델을 바꿀 이유가 없어서** 화면 입력 방식만 바뀐 것으로 처리했습니다.
 
-`reports`도 컬럼이 그대로입니다 — 확정 리포트(231:1237)의 완주 카드(`completion`)는 **전부 조회 시 조립**합니다. 사용률·「내 몸의 변화」 4칸은 `challenges`와 `checkins`·`weight_log`에서 계산되므로 v3.0 원칙 #5대로 저장하지 않습니다.
+`reports`도 컬럼이 그대로입니다 — 확정 리포트(231:1237)의 완주 카드(`completion`)는 **전부 조회 시 조립**합니다. 사용률·「내 몸의 변화」 4칸은 `challenge`와 `checkin`·`weight_log`에서 계산되므로 v3.0 원칙 #5대로 저장하지 않습니다.
