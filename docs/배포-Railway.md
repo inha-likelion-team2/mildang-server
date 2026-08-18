@@ -152,7 +152,33 @@ AI_BASE_URL=https://<ai>.up.railway.app
 AI_FAKE=false
 ```
 
-⚠ `AI_BASE_URL`에 `/v1`도 `/internal`도 붙이지 마세요. 백엔드가 `/internal/haggle-turn` 식으로 붙입니다.
+⚠ `AI_BASE_URL`은 **`https://`로 시작하고 경로 없이 호스트까지만**입니다. 백엔드가 `/internal/haggle-turn` 식으로 붙입니다.
+
+| 잘못된 값 | 증상 |
+| --- | --- |
+| `xxx.up.railway.app` (스킴 없음) | **0.4초 만에** 503 `AI_UNAVAILABLE`. 스킴이 없으면 `URI`가 상대 경로로 읽어 DNS를 타지도 않는다 — 연결 타임아웃(2초)보다 빠르게 떨어지는 게 이 실수의 표식이다 |
+| `https://xxx.up.railway.app/` | 끝 슬래시로 경로가 `//internal/...`이 된다 |
+| `https://xxx.up.railway.app/internal` | 경로가 두 번 붙는다 |
+
+**7) 연결 확인** — 6개 경로가 실제로 도는지는 아래로 갈립니다.
+
+```
+POST /v1/analyses/text   {"query":"짜장면","context":{"challengeId":"...","kind":"MEAL"}}
+```
+
+`짜장면`은 Fake 사전(라면·김밥·빵·떡볶이·치킨·칼국수·삼겹살·된장찌개·제육볶음·냉면)에 **없는 메뉴**입니다. 해석돼서 돌아오면 실 AI가 붙은 것이고, `resolved:false`가 오면 아직 Fake입니다.
+
+**2026-08-18 실측** (전부 통과):
+
+| 경로 | 시간 |
+| --- | --- |
+| analyze-text | 1.8~2.7초 |
+| analyze-image (29KB) | **9.99초** |
+| scan-comment | 3.53초 |
+| haggle 개설 / 턴 | 5.25초 / 4.26초 |
+| finding (리포트) | 4.43초 |
+
+⚠ 스캔은 이미지가 커질수록 늘어납니다(실사진 이전 실측 21.5초). `AI_READ_TIMEOUT`이 45초라 여유는 있지만, 넘치면 **코드 수정 없이 변수 하나**(`AI_READ_TIMEOUT=60s`)로 올릴 수 있습니다.
 
 **7) 확인** — 백엔드가 부르는 6개와 AI가 여는 6개가 일치해야 합니다.
 
