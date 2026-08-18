@@ -6,6 +6,7 @@
 <title>밀당 — 데모 (와이어프레임 충실판)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script src="https://js.tosspayments.com/v2/standard"></script>
 <link href="https://fonts.googleapis.com/css2?family=Caprasimo&family=Jua&family=Figtree:wght@400;700;900&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
   /* ===== 확정 와이어프레임(피그마 189:2296) 토큰 =====
@@ -664,6 +665,7 @@ function avatar(s) {
 }
 document.querySelectorAll('[data-av]').forEach(e => e.outerHTML = avatar(e.dataset.av));
 consumeKakaoCode();
+consumeTossResult();
 
 let toastTimer = null;
 function toast(msg) {
@@ -865,13 +867,69 @@ async function startPlan() {
   const r = await call('POST', '/challenges', { period: currentPeriod, paymentId: null });
   saveLast(r.id); initSurvey(); nav('survey');
 }
+// 결제창 → 승인 → 챌린지 생성.
+// 결제창은 성공하면 successUrl로 «리다이렉트»된다 — 돌아온 뒤 consumeTossResult()가 이어받는다.
 async function payAndCreate() {
-  $('pay-cta').textContent = '결제 중…';
+  const cfg = await call('GET', '/payments/config', null, false, true).catch(() => ({ configured: false }));
+  if (!cfg.configured) {
+    // 결제 설정 전에는 데모 결제로 진행한다 (심사 시연이 막히지 않게)
+    const r = await call('POST', '/payments/checkout', { period: currentPeriod, provider: 'MOCK' });
+    await createChallengeWith(r.id);
+    return;
+  }
+  // 주문번호는 우리 것이다 — 승인 멱등 키로도 쓴다
+  const orderId = 'mildang-' + currentPeriod + '-' + Date.now().toString(36)
+    + '-' + Math.random().toString(36).slice(2, 8);
+  sessionStorage.setItem('mildang.pay', JSON.stringify({ orderId, period: currentPeriod }));
+
+  const toss = TossPayments(cfg.clientKey);
+  const payment = toss.payment({ customerKey: TossPayments.ANONYMOUS });
+  await payment.requestPayment({
+    method: 'CARD',
+    amount: { currency: 'KRW', value: currentPrice },
+    orderId,
+    orderName: (PERIOD_LABEL[currentPeriod] || currentPeriod) + ' 밀당 챌린지',
+    successUrl: location.origin + location.pathname + '?pay=ok',
+    failUrl: location.origin + location.pathname + '?pay=fail',
+    card: { useEscrow: false, flowMode: 'DEFAULT', useCardPoint: false, useAppCardOnly: false },
+  });
+}
+
+// 결제창에서 돌아온 직후 — 승인은 서버가 한다 (금액도 서버가 다시 계산해 대조)
+async function consumeTossResult() {
+  const q = new URLSearchParams(location.search);
+  if (!q.get('pay')) return false;
+  const clean = location.origin + location.pathname;
+  history.replaceState({}, '', clean);
+
+  if (q.get('pay') === 'fail') {
+    toast('결제가 완료되지 않았어요 — 다시 시도해 주세요');
+    return false;
+  }
+  const saved = JSON.parse(sessionStorage.getItem('mildang.pay') || '{}');
+  sessionStorage.removeItem('mildang.pay');
+  const paymentKey = q.get('paymentKey');
+  const orderId = q.get('orderId') || saved.orderId;
+  const amount = Number(q.get('amount'));
+  if (!paymentKey || !orderId) return false;
+
   try {
-    const pay = await call('POST', '/payments/checkout', { period: currentPeriod, provider: 'MOCK', receipt: '' });
-    const r = await call('POST', '/challenges', { period: currentPeriod, paymentId: pay.id });
-    saveLast(r.id); initSurvey(); nav('survey');
-  } finally { $('pay-cta').textContent = '결제하기'; }
+    const r = await call('POST', '/payments/confirm', {
+      period: saved.period || currentPeriod, paymentKey, orderId, amount,
+    });
+    currentPeriod = r.period;
+    await createChallengeWith(r.id);
+    return true;
+  } catch (e) {
+    toast('결제 확인에 실패했어요 — 결제된 금액이 있다면 자동으로 취소됩니다');
+    return false;
+  }
+}
+
+/** 결제로 얻은 paymentId로 챌린지를 연다 (데모·실결제 공용) */
+async function createChallengeWith(paymentId) {
+  const c = await call('POST', '/challenges', { period: currentPeriod, paymentId });
+  saveLast(c.id); initSurvey(); nav('survey');
 }
 
 // ---------- S2 · 설문 + 예산 ----------

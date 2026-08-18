@@ -34,6 +34,13 @@ mildang:
     # AI가 멈추면 요청 스레드 + DB 커넥션을 붙잡는다 — 반드시 상한을 둔다 (스캔이 20초대라 read는 여유 있게)
     connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_READ_TIMEOUT:30s}
+  toss:
+    # 결제창용 — 브라우저에 노출돼도 되는 값
+    client-key: ${TOSS_CLIENT_KEY:}
+    # 승인 API용 — 서버만 쓴다. 없으면 결제 경로가 닫힌다
+    secret-key: ${TOSS_SECRET_KEY:}
+    confirm-uri: ${TOSS_CONFIRM_URI:https://api.tosspayments.com/v1/payments/confirm}
+    timeout: ${TOSS_TIMEOUT:10s}
   kakao:
     # prod에서 id_token의 aud와 대조할 카카오 앱 키 — 없으면 prod 기동이 실패한다(의도된 동작).
     # 로그인 방식에 따라 aud에 들어가는 키가 다르다(JS SDK=JavaScript 키, 서버 교환=REST API 키)

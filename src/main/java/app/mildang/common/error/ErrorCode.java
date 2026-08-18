@@ -13,6 +13,8 @@ public enum ErrorCode {
     PAYMENT_REQUIRED(HttpStatus.PAYMENT_REQUIRED, "이 기간은 결제가 필요해요."),
     PAYMENT_VERIFICATION_FAILED(HttpStatus.PAYMENT_REQUIRED, "결제 확인에 실패했어요. 다시 시도해 주세요."),
     PAYMENT_ALREADY_USED(HttpStatus.CONFLICT, "이미 사용된 결제예요."),
+    PAYMENT_FAILED(HttpStatus.BAD_REQUEST, "결제가 완료되지 않았어요. 다시 시도해 주세요."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "결제 금액이 맞지 않아요."),
     FREE_TRIAL_USED(HttpStatus.FORBIDDEN, "무료 체험을 이미 쓰셨어요."),
     NOT_FOUND(HttpStatus.NOT_FOUND, "찾을 수 없어요."),
     CHALLENGE_IN_PROGRESS(HttpStatus.CONFLICT, "진행 중인 챌린지가 있어요."),

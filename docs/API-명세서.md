@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-18 (8) | **실결제(토스페이먼츠) 연동** — `GET /payments/config`(클라이언트 키), `POST /payments/confirm`{period,paymentKey,orderId,amount}. **금액은 서버가 요금제로 다시 계산해 대조**한다. 키가 없으면 결제 경로가 닫히고 데모 결제(`MOCK`)는 그대로. ⚠ 웹앱이라 IAP가 아니라 **PG**가 맞다 — `PROD_PROVIDERS`를 `TOSS`로 정정 |
 | 2026-08-18 (7) | W4 `subtitle`을 **「밀당 대화 무제한 · 가장 긴 한 판」**으로 — 옛 문구는 폐지된 주차별 예산을 가리켜 사실과 달랐다 (Q6 종결) |
 | 2026-08-18 (6) | 카카오 웹 로그인 **실계정 확인 완료**. ⚠ 배포 시 `KAKAO_CLIENT_SECRET` 필수 — 새 콘솔은 REST API 키에 클라이언트 시크릿이 **기본 활성화**돼 있어 없으면 토큰 교환이 401로 막힌다 |
 | 2026-08-18 (5) | **밀당 대화 횟수 제한 구현** — 결제 화면의 「AI 밀당 대화 40회」. **대화 1번 = 1회**(같은 항목 재흥정은 안 셈), 1주 20·2주 40·4주 무제한. 소진 시 `POST /haggles` → **409 `HAGGLE_QUOTA_EXCEEDED`**. `current.haggleQuota{limit,used,remaining,unlimited}` 신설 |

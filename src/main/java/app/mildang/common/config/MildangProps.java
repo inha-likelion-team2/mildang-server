@@ -9,11 +9,12 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * 심사위원이 공유 카드 링크를 눌렀을 때 우리 서버가 아닌 곳으로 간다.
  */
 @ConfigurationProperties(prefix = "mildang")
-public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String publicBaseUrl) {
+public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, Toss toss, String publicBaseUrl) {
 
     public MildangProps {
         publicBaseUrl = publicBaseUrl != null ? publicBaseUrl : "http://localhost:8080";
         kakao = kakao != null ? kakao : new Kakao(null, null, null, null, null, null, null, null);
+        toss = toss != null ? toss : new Toss(null, null, null, null);
     }
 
     public record Demo(boolean enabled) {
@@ -49,6 +50,20 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String public
             return java.util.Arrays.stream(appKey.split(","))
                     .map(String::trim).filter(key -> !key.isEmpty())
                     .collect(java.util.stream.Collectors.toUnmodifiableSet());
+        }
+    }
+
+    /**
+     * 토스페이먼츠 — 실결제.
+     *
+     * <p>clientKey는 브라우저가 결제창을 띄울 때 쓰고(노출돼도 되는 값), secretKey는 <b>서버만</b>
+     * 승인 API에 쓴다. 시크릿이 없으면 결제 경로가 닫힌다 — 열어두면 «승인 없이 결제된 척»이 된다.
+     */
+    public record Toss(String clientKey, String secretKey, String confirmUri, Duration timeout) {
+
+        public Toss {
+            confirmUri = confirmUri != null ? confirmUri : "https://api.tosspayments.com/v1/payments/confirm";
+            timeout = timeout != null ? timeout : Duration.ofSeconds(10);
         }
     }
 
