@@ -39,6 +39,10 @@ mildang:
     # 로그인 방식에 따라 aud에 들어가는 키가 다르다(JS SDK=JavaScript 키, 서버 교환=REST API 키)
     # → 콤마로 여러 개를 넣어두면 어느 쪽이든 통과한다.  예: KAKAO_APP_KEY=abc...,def...
     app-key: ${KAKAO_APP_KEY:}
+    # 인가 코드를 토큰으로 바꿀 때 client_id로 쓴다 (콘솔의 REST API 키)
+    rest-api-key: ${KAKAO_REST_API_KEY:}
+    # 콘솔에서 «보안 → Client Secret»을 켰다면 넣는다. 안 켰으면 비워둔다
+    client-secret: ${KAKAO_CLIENT_SECRET:}
     issuer: ${KAKAO_ISSUER:https://kauth.kakao.com}
     jwks-uri: ${KAKAO_JWKS_URI:https://kauth.kakao.com/.well-known/jwks.json}
     timeout: ${KAKAO_TIMEOUT:3s}

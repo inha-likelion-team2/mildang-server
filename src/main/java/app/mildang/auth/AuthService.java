@@ -29,18 +29,25 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserSessionRepository sessionRepository;
     private final KakaoVerifier kakaoVerifier;
+    private final KakaoTokenClient kakaoTokenClient;
+    private final String restApiKey;
+    private final String authorizeUri;
     private final JwtProvider jwtProvider;
     private final long refreshTtlDays;
     private final boolean demoEnabled;
 
     public AuthService(UserRepository userRepository, UserSessionRepository sessionRepository,
-                       KakaoVerifier kakaoVerifier, JwtProvider jwtProvider, MildangProps props) {
+                       KakaoVerifier kakaoVerifier, KakaoTokenClient kakaoTokenClient,
+                       JwtProvider jwtProvider, MildangProps props) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.kakaoVerifier = kakaoVerifier;
+        this.kakaoTokenClient = kakaoTokenClient;
         this.jwtProvider = jwtProvider;
         this.refreshTtlDays = props.jwt().refreshTtlDays();
         this.demoEnabled = props.demo().enabled();
+        this.restApiKey = props.kakao().restApiKey();
+        this.authorizeUri = props.kakao().authorizeUri();
     }
 
     @Transactional
@@ -48,7 +55,21 @@ public class AuthService {
         if (!"KAKAO".equals(request.provider())) {
             throw new ApiException(ErrorCode.VALIDATION_FAILED, "provider는 KAKAO만 지원해요.", "provider", null);
         }
-        String providerSub = kakaoVerifier.verify(request.idToken());
+        return issueFor(kakaoVerifier.verify(request.idToken()), request.deviceId(), request.pushToken());
+    }
+
+    /**
+     * 웹 카카오 로그인 — 인가 코드를 서버가 토큰으로 바꾸고, 그 안의 id_token을 검증한다.
+     * 여기서 얻는 sub가 곧 계정 식별자다 (닉네임·이메일은 받지 않는다).
+     */
+    @Transactional
+    public TokenResponse kakaoLogin(AuthDtos.KakaoLoginRequest request) {
+        String idToken = kakaoTokenClient.exchange(request.code(), request.redirectUri());
+        return issueFor(kakaoVerifier.verify(idToken), request.deviceId(), request.pushToken());
+    }
+
+    /** 카카오에서 확인된 sub로 계정을 찾거나 만들고 토큰을 발급한다 (두 로그인 경로 공용) */
+    private TokenResponse issueFor(String providerSub, String deviceId, String pushToken) {
         boolean[] created = {false};
         User user = userRepository.findByProviderSub(providerSub).orElseGet(() -> {
             created[0] = true;
@@ -59,20 +80,36 @@ public class AuthService {
         // 기기 = 세션. 같은 기기 재로그인이면 같은 행을 갱신한다 (스키마 v2.1 §4.2)
         Instant now = Instant.now();
         UserSession session = sessionRepository
-                .findById(new UserSessionId(user.getId(), request.deviceId()))
+                .findById(new UserSessionId(user.getId(), deviceId))
                 .orElseGet(() -> {
                     UserSession fresh = new UserSession();
                     fresh.setUserId(user.getId());
-                    fresh.setDeviceId(request.deviceId());
+                    fresh.setDeviceId(deviceId);
                     fresh.setCreatedAt(now);
                     return fresh;
                 });
-        session.setPushToken(request.pushToken());
+        session.setPushToken(pushToken);
         session.setRevokedAt(null);
         String refreshToken = rotate(session, now);
         sessionRepository.save(session);
 
         return response(user, created[0], refreshToken);
+    }
+
+    /**
+     * 카카오 인가 화면 주소. scope=openid를 붙여야 id_token이 온다 — 이게 빠지면
+     * 액세스 토큰만 와서 우리가 검증할 게 없다.
+     */
+    public AuthDtos.KakaoAuthorizeResponse authorizeUrl(String redirectUri) {
+        if (restApiKey == null || restApiKey.isBlank()) {
+            return new AuthDtos.KakaoAuthorizeResponse(null, false);
+        }
+        String url = authorizeUri
+                + "?response_type=code"
+                + "&client_id=" + java.net.URLEncoder.encode(restApiKey, java.nio.charset.StandardCharsets.UTF_8)
+                + "&redirect_uri=" + java.net.URLEncoder.encode(redirectUri, java.nio.charset.StandardCharsets.UTF_8)
+                + "&scope=openid";
+        return new AuthDtos.KakaoAuthorizeResponse(url, true);
     }
 
     @Transactional

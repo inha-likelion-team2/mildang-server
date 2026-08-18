@@ -23,8 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Component;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
@@ -39,8 +37,6 @@ import tools.jackson.databind.ObjectMapper;
  * 끊기지 않게. 다만 위조 토큰이 임의의 kid를 달고 오면 매번 외부 호출을 유발할 수 있으므로
  * 재조회에 최소 간격을 둔다.
  */
-@Component
-@Profile("prod")
 public class ProdKakaoVerifier implements KakaoVerifier {
 
     private static final Logger log = LoggerFactory.getLogger(ProdKakaoVerifier.class);
@@ -66,7 +62,6 @@ public class ProdKakaoVerifier implements KakaoVerifier {
     private volatile Map<String, PublicKey> keys = Map.of();
     private volatile Instant lastFetch = Instant.EPOCH;
 
-    @org.springframework.beans.factory.annotation.Autowired
     public ProdKakaoVerifier(MildangProps props) {
         this(props.kakao(), httpFetcher(props.kakao()), REFRESH_INTERVAL);
     }

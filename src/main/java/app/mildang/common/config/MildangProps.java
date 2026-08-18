@@ -13,7 +13,7 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String public
 
     public MildangProps {
         publicBaseUrl = publicBaseUrl != null ? publicBaseUrl : "http://localhost:8080";
-        kakao = kakao != null ? kakao : new Kakao(null, null, null, null);
+        kakao = kakao != null ? kakao : new Kakao(null, null, null, null, null, null, null, null);
     }
 
     public record Demo(boolean enabled) {
@@ -29,11 +29,15 @@ public record MildangProps(Demo demo, Jwt jwt, Ai ai, Kakao kakao, String public
      * 다르다 — JS SDK면 JavaScript 키, 서버가 인가 코드를 교환하면 REST API 키. 프론트 구현이
      * 바뀌거나 웹·앱을 같이 내면 하나만 넣어둔 쪽은 전 로그인이 막힌다.
      */
-    public record Kakao(String appKey, String issuer, String jwksUri, Duration timeout) {
+    public record Kakao(String appKey, String restApiKey, String clientSecret,
+                        String issuer, String jwksUri, String tokenUri, String authorizeUri,
+                        Duration timeout) {
 
         public Kakao {
             issuer = issuer != null ? issuer : "https://kauth.kakao.com";
             jwksUri = jwksUri != null ? jwksUri : "https://kauth.kakao.com/.well-known/jwks.json";
+            tokenUri = tokenUri != null ? tokenUri : "https://kauth.kakao.com/oauth/token";
+            authorizeUri = authorizeUri != null ? authorizeUri : "https://kauth.kakao.com/oauth/authorize";
             timeout = timeout != null ? timeout : Duration.ofSeconds(3);
         }
 

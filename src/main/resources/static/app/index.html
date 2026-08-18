@@ -153,7 +153,8 @@
   <h2 class="disp" style="margin-top:90px;font-size:32px;line-height:1.35">밀가루,<br>끊지 말고<br>밀당하세요.</h2>
   <p style="margin-top:16px;font-size:13.5px;color:var(--muted);line-height:1.6">밀가루 예산을 설정하고,<br>먹는 걸 기록하면 AI가 균형을 알려드려요</p>
   <div class="grow"></div>
-  <button class="pill-btn" onclick="login('demo-user-1')">키카오 로그인</button>
+  <button class="pill-btn" onclick="kakaoLogin()">키카오 로그인</button>
+  <button onclick="login('demo-user-1')" style="margin-top:10px;background:none;border:none;font-size:13px;font-weight:800;color:var(--muted)">데모 계정으로 둘러보기</button>
   <p style="margin-top:10px;text-align:center;font-size:11px;color:var(--muted)">데모 빌드 — 실제 카카오 인증 없이 로그인됩니다</p>
 </div>
 
@@ -662,6 +663,7 @@ function avatar(s) {
     <path d="M8 44c0-8.8 7.2-16 16-16s16 7.2 16 16z" fill="#FFD93B"/></svg>`;
 }
 document.querySelectorAll('[data-av]').forEach(e => e.outerHTML = avatar(e.dataset.av));
+consumeKakaoCode();
 
 let toastTimer = null;
 function toast(msg) {
@@ -727,6 +729,48 @@ function nav(s) {
 // ---------- 인증 · 데모 ----------
 let userKey = null; // 마지막 챌린지 ID 보관 — 완주 후 current 404여도 리포트 진입 (실 FE도 동일 패턴 필요)
 function saveLast(id) { challengeId = id; if (userKey && id) localStorage.setItem(userKey, id); }
+// 카카오 웹 로그인 — 인가 화면으로 보냈다가 ?code=…로 돌아오면 서버가 토큰으로 바꾼다
+function redirectUri() {
+  return location.origin + location.pathname;
+}
+async function kakaoLogin() {
+  const r = await call('GET', `/auth/kakao/authorize-url?redirectUri=${encodeURIComponent(redirectUri())}`, null, false, true)
+    .catch(() => ({ configured: false }));
+  if (!r.configured) {
+    toast('카카오 로그인이 아직 설정되지 않았어요 — 데모 계정으로 둘러보세요');
+    return;
+  }
+  location.href = r.authorizeUrl;
+}
+
+// 카카오에서 돌아온 직후 — 주소창의 code를 서버에 넘기고 주소는 깨끗하게 지운다
+async function consumeKakaoCode() {
+  const code = new URLSearchParams(location.search).get('code');
+  if (!code) return false;
+  history.replaceState({}, '', redirectUri());
+  try {
+    const r = await call('POST', '/auth/kakao', {
+      code, redirectUri: redirectUri(), deviceId: deviceId(),
+    });
+    token = r.accessToken; refreshToken = r.refreshToken;
+    userKey = 'mildang.last.' + r.user.id;
+    await route();
+    return true;
+  } catch (e) {
+    toast('로그인이 완료되지 않았어요 — 다시 시도해 주세요');
+    return false;
+  }
+}
+// 기기 = 세션. 브라우저마다 하나씩 만들어 두고 재사용한다
+function deviceId() {
+  let id = localStorage.getItem('mildang.device');
+  if (!id) {
+    id = 'web-' + Math.random().toString(36).slice(2, 10);
+    localStorage.setItem('mildang.device', id);
+  }
+  return id;
+}
+
 async function login(idToken, seedScenario) {
   const r = await call('POST', '/auth/social', { provider: 'KAKAO', idToken, deviceId: 'app-' + idToken });
   token = r.accessToken; refreshToken = r.refreshToken;

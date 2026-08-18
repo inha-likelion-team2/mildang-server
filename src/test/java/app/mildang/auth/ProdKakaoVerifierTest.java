@@ -58,7 +58,7 @@ class ProdKakaoVerifierTest {
     }
 
     private static MildangProps.Kakao config() {
-        return new MildangProps.Kakao(APP_KEY, ISSUER, "https://unused", Duration.ofSeconds(3));
+        return new MildangProps.Kakao(APP_KEY, null, null, ISSUER, "https://unused", null, null, Duration.ofSeconds(3));
     }
 
     private static ProdKakaoVerifier verifier(ProdKakaoVerifier.JwksFetcher fetcher) {
@@ -185,7 +185,7 @@ class ProdKakaoVerifierTest {
     void acceptsAnyConfiguredAppKey() {
         // 웹은 로그인 방식에 따라 aud가 갈린다 — JS SDK면 JavaScript 키, 서버 교환이면 REST API 키
         MildangProps.Kakao twoKeys = new MildangProps.Kakao(
-                "javascript-key, rest-api-key", ISSUER, "https://unused", null);
+                "javascript-key, rest-api-key", null, null, ISSUER, "https://unused", null, null, null);
         ProdKakaoVerifier v = new ProdKakaoVerifier(twoKeys, () -> jwks(kakaoKeys, KID));
 
         for (String key : new String[] {"javascript-key", "rest-api-key"}) {
@@ -203,7 +203,7 @@ class ProdKakaoVerifierTest {
     @Test
     @DisplayName("★ 앱 키가 없으면 기동에서 막는다 — aud 대조를 건너뛴 채 뜨면 안 된다")
     void refusesToStartWithoutAppKey() {
-        MildangProps.Kakao noKey = new MildangProps.Kakao(" ", ISSUER, "https://unused", null);
+        MildangProps.Kakao noKey = new MildangProps.Kakao(" ", null, null, ISSUER, "https://unused", null, null, null);
         assertThrows(IllegalStateException.class,
                 () -> new ProdKakaoVerifier(noKey, () -> jwks(kakaoKeys, KID)));
     }
