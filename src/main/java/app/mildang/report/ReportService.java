@@ -55,6 +55,98 @@ public class ReportService {
     private static final int THRESHOLD = 40;
     private static final SecureRandom RANDOM = new SecureRandom();
     private static final String CODE_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+    /** 체크인 값을 «좋음 2 / 보통 1 / 나쁨 0» 점수로 — 앞뒤 절반을 비교하려면 숫자가 필요하다 */
+    private static int score(ConditionValue value) {
+        return switch (value) {
+            case GOOD -> 2;
+            case MID -> 1;
+            case BAD -> 0;
+        };
+    }
+
+    private static String levelLabel(double score) {
+        if (score >= 1.5) {
+            return "좋음";
+        }
+        return score >= 0.5 ? "보통" : "나쁨";
+    }
+
+    /**
+     * 확정 와이어프레임 231:1237의 완주 카드.
+     *
+     * <p>「내 몸의 변화」는 체크인을 <b>앞 절반 / 뒤 절반</b>으로 갈라 비교한다. 절반씩 갈라야
+     * «달라졌다»를 말할 수 있고, 한쪽이 비면 비교 자체가 성립하지 않으므로 그 칸은 null로 둔다.
+     */
+    private ReportDtos.Completion completion(Challenge challenge) {
+        int total = challenge.getBudget() == null ? 0 : challenge.getBudget();
+        int spent = challenge.getSpent() + challenge.getPrepaid();
+        int usedPercent = total == 0 ? 0 : (int) Math.round(spent * 100.0 / total);
+        int leftover = total - spent;
+
+        List<Checkin> checkins = checkinRepository.findByChallengeIdIn(List.of(challenge.getId()))
+                .stream().sorted(java.util.Comparator.comparing(Checkin::getDate)).toList();
+        int half = checkins.size() / 2;
+        List<Checkin> early = checkins.subList(0, half);
+        List<Checkin> late = checkins.subList(checkins.size() - half, checkins.size());
+
+        List<ReportDtos.BodyChange> changes = new java.util.ArrayList<>();
+        // 칼로리는 아직 재료가 없다 — AI가 메뉴별 kcal을 주기 시작하면 채운다 (AI 레포 이슈)
+        changes.add(new ReportDtos.BodyChange("CALORIE", "칼로리 지출", null, "메뉴별 칼로리 정보가 아직 없어요"));
+        changes.add(levelChange("BLOAT", "붓기 효과", early, late, Checkin::getBloat));
+        changes.add(countChange("SKIN", "피부 트러블", early, late, Checkin::getSkin));
+        changes.add(percentChange("DROWSY", "식곤증 개선", early, late, Checkin::getDrowsy));
+
+        String summary = "처음 " + total + "에서 시작해, " + Math.max(0, leftover) + "을 남기고 완주했어요!";
+        // 톤 규칙 — 초과해도 판정하지 않는다
+        String headline = leftover >= 0 ? "이번 판 밀당 성공 !" : "이번 판, 끝까지 갔어요 !";
+
+        return new ReportDtos.Completion(
+                challenge.getPeriod().label() + " 챌린지 완주 🎉", headline,
+                usedPercent, total, spent, leftover, summary, changes);
+    }
+
+    /** 「보통 → 좋음」 */
+    private ReportDtos.BodyChange levelChange(String key, String label, List<Checkin> early,
+                                              List<Checkin> late,
+                                              java.util.function.Function<Checkin, ConditionValue> pick) {
+        if (early.isEmpty() || late.isEmpty()) {
+            return new ReportDtos.BodyChange(key, label, null, "기록이 모자라요");
+        }
+        double before = early.stream().mapToInt(c -> score(pick.apply(c))).average().orElse(0);
+        double after = late.stream().mapToInt(c -> score(pick.apply(c))).average().orElse(0);
+        return new ReportDtos.BodyChange(key, label,
+                levelLabel(before) + " → " + levelLabel(after), null);
+    }
+
+    /** 「3회 → 1회」 — 나쁨이 몇 번이었나 */
+    private ReportDtos.BodyChange countChange(String key, String label, List<Checkin> early,
+                                              List<Checkin> late,
+                                              java.util.function.Function<Checkin, ConditionValue> pick) {
+        if (early.isEmpty() || late.isEmpty()) {
+            return new ReportDtos.BodyChange(key, label, null, "기록이 모자라요");
+        }
+        long before = early.stream().filter(c -> pick.apply(c) == ConditionValue.BAD).count();
+        long after = late.stream().filter(c -> pick.apply(c) == ConditionValue.BAD).count();
+        return new ReportDtos.BodyChange(key, label, before + "회 → " + after + "회", null);
+    }
+
+    /** 「18% 감소」 — 나쁨 비율이 얼마나 줄었나 */
+    private ReportDtos.BodyChange percentChange(String key, String label, List<Checkin> early,
+                                                List<Checkin> late,
+                                                java.util.function.Function<Checkin, ConditionValue> pick) {
+        if (early.isEmpty() || late.isEmpty()) {
+            return new ReportDtos.BodyChange(key, label, null, "기록이 모자라요");
+        }
+        double before = early.stream().mapToInt(c -> score(pick.apply(c))).average().orElse(0);
+        double after = late.stream().mapToInt(c -> score(pick.apply(c))).average().orElse(0);
+        int delta = (int) Math.round((after - before) / 2.0 * 100);
+        if (delta == 0) {
+            return new ReportDtos.BodyChange(key, label, "그대로", null);
+        }
+        return new ReportDtos.BodyChange(key, label,
+                Math.abs(delta) + "% " + (delta > 0 ? "개선" : "나빠짐"), null);
+    }
+
     private static final String DISCLAIMER = "이 리포트는 의학적 진단이 아닌 본인 기록 기반 관찰입니다.";
     private static final Map<String, String> CONDITION_LABELS =
             Map.of("BLOAT", "더부룩함", "SKIN", "피부 트러블", "DROWSY", "낮 졸림");
@@ -342,7 +434,8 @@ public class ReportService {
                         report.getHaggleAvgTurns(), report.getHaggleLongestTurns()),
                 DISCLAIMER,
                 new NextChallenge(challenge.getPeriod(), report.getNextOptionKey(),
-                        report.getNextSuggestedBudget(), "재대결 받기 · 이번엔 " + suggestedTotal));
+                        report.getNextSuggestedBudget(), "재대결 받기 · 이번엔 " + suggestedTotal),
+                completion(challenge));
     }
 
     private static String whenOf(Item item) {

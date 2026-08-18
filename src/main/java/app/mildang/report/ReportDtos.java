@@ -36,8 +36,25 @@ public class ReportDtos {
     }
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
+    /**
+     * 확정 와이어프레임 231:1237의 공유 카드 한 장 — 화면이 그대로 그릴 수 있게 문구까지 만들어 보낸다.
+     * 「2주 챌린지 완주 🎉 / 이번 주 밀당 성공 ! / 밀가루 예산의 70%만 사용했어요」
+     */
+    public record Completion(String periodLabel, String headline, int usedPercent,
+                             int totalBudget, int spent, int leftover, String summaryLine,
+                             List<BodyChange> bodyChanges) {
+    }
+
+    /**
+     * 「내 몸의 변화」 4칸. value가 null이면 아직 재료가 없는 칸이다 —
+     * 화면은 그 칸을 «기록이 모자라요»로 비워두면 된다.
+     */
+    public record BodyChange(String key, String label, String value, String note) {
+    }
+
     public record ReportResponse(ChallengeView challenge, String title, List<Stat> stats, Finding finding,
-                                 HaggleHighlight haggleHighlight, String disclaimer, NextChallenge nextChallenge) {
+                                 HaggleHighlight haggleHighlight, String disclaimer,
+                                 NextChallenge nextChallenge, Completion completion) {
     }
 
     public record ShareCardRequest(List<String> mentions, String format) {

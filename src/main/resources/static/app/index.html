@@ -472,22 +472,40 @@
 </div>
 
 <!-- S7 · 완주 리포트 -->
-<div class="scr" id="s-report" style="padding:14px 18px 20px">
-  <div style="margin-top:46px;text-align:center">
-    <div style="font-size:11.5px;font-weight:700;letter-spacing:.1em;color:#333" id="r-label"></div>
-    <h2 class="disp" style="margin:4px 0 0;font-size:24px" id="r-title">당신의 몸이 쓴 리포트</h2>
+<div class="scr" id="s-report">
+  <h2 class="disp" style="margin-top:56px;text-align:center;font-size:24px">당신의 결과를 공유해보세요</h2>
+  <p style="margin-top:8px;text-align:center;font-size:13px;color:var(--muted)" id="r-sub"></p>
+
+  <!-- 공유 카드 한 장 — 이 영역이 그대로 이미지가 된다 -->
+  <div id="r-card" class="card sel" style="margin-top:24px;padding:26px 22px;border-radius:22px;position:relative;overflow:hidden">
+    <div style="position:absolute;right:-30px;bottom:40px;width:170px;height:150px;opacity:.35">
+      <svg width="170" height="150" viewBox="0 0 34 30" fill="none"><path d="M2 6h30c0 9.5-6.7 17-15 17S2 15.5 2 6z" fill="#FFD93B"/><rect x="14" y="22" width="6" height="6" rx="1.6" fill="#FFD93B"/></svg>
+    </div>
+    <div style="position:relative">
+      <div style="display:flex;align-items:flex-start">
+        <div class="disp" style="flex:1;font-size:30px">밀당</div>
+        <div style="background:#fff;border-radius:999px;padding:6px 12px;font-size:11px;font-weight:800" id="r-hashtag">#밀가루 끊기 챌린지</div>
+      </div>
+
+      <div style="margin-top:26px;font-size:14px;font-weight:800" id="r-period"></div>
+      <div class="disp" style="margin-top:4px;font-size:24px;display:inline-block;border-bottom:4px solid var(--y);padding-bottom:2px" id="r-headline"></div>
+
+      <div style="margin-top:30px;font-size:16px;font-weight:800">밀가루 예산의</div>
+      <div style="display:flex;align-items:baseline;gap:10px">
+        <div class="disp" style="font-size:56px;line-height:1.05" id="r-percent">–</div>
+        <div style="font-size:15px;font-weight:700">만 사용했어요</div>
+      </div>
+
+      <div style="margin-top:26px;font-size:13px;font-weight:900">내 몸의 변화</div>
+      <div id="r-body" style="margin-top:10px;display:grid;grid-template-columns:1fr 1fr;gap:8px"></div>
+
+      <div style="margin-top:16px;font-size:11.5px;color:#8a7c3a" id="r-summary"></div>
+    </div>
   </div>
-  <div style="margin-top:14px;background:#fff;border-radius:18px;padding:14px 16px;border:1px solid rgba(0,0,0,.07)">
-    <div style="display:flex;text-align:center" id="r-stats"></div>
-  </div>
-  <div id="r-finding"></div>
-  <div style="margin-top:10px;background:#fff;border-radius:18px;padding:14px 16px;border:1.5px dashed #2b2b2b" id="r-haggle"></div>
+
   <div class="grow"></div>
-  <p style="margin:8px 0;text-align:center;font-size:10px;color:rgba(0,0,0,.4)" id="r-disclaimer"></p>
-  <div style="display:flex;gap:8px">
-    <button style="flex:1;background:#fff;border:1.5px solid #2b2b2b;color:#333;border-radius:999px;padding:14px 4px;font-family:'Caprasimo','Jua',sans-serif;font-size:14px" onclick="openShare()">스토리로 공유</button>
-    <button class="pill-btn" style="flex:1.2;padding:14px 4px;font-size:14px" id="r-cta" onclick="rematch()">재대결 받기</button>
-  </div>
+  <button class="ghost-btn" style="margin-top:20px" onclick="openShare()">스토리에 공유하기</button>
+  <button onclick="rematch()" style="margin-top:10px;background:none;border:none;font-size:13px;font-weight:800;color:var(--muted)" id="r-cta">다시 도전하기</button>
 </div>
 
 <!-- 3c · 미니 입력창 (바텀시트) -->
@@ -1356,29 +1374,22 @@ async function loadReport() {
     return;
   }
   reportData = r; nextChallengeRec = r.nextChallenge;
-  $('r-label').textContent = r.challenge.label; // label이 이미 완주 문구 포함
-  $('r-title').textContent = r.title || '당신의 몸이 쓴 리포트';
-  $('r-stats').innerHTML = r.stats.map((s, idx) =>
-    (idx ? '<div style="width:1px;background:rgba(0,0,0,.1)"></div>' : '') +
-    `<div style="flex:1"><div class="disp" style="font-size:24px;color:#2b2b2b">${s.value}</div>
-      <div style="font-size:10.5px;font-weight:700;color:rgba(0,0,0,.5)">${s.label}${s.sub ? `<br><span style="font-weight:400">${s.sub}</span>` : ''}</div></div>`).join('');
-  if (r.finding.available) {
-    const m = (r.finding.headline || '').match(/([\d.]+)\s*배/);
-    const big = m ? m[1] + '배' : '';
-    const head = m ? r.finding.headline.replace(m[0], '').replace(/,\s*$/, '') : r.finding.headline;
-    $('r-finding').innerHTML = `<div style="margin-top:10px;background:#fff;border:1.5px solid #444;border-radius:20px;padding:18px 18px 16px">
-      <div style="font-size:10.5px;font-weight:700;letter-spacing:.1em;color:#222">발견 · 당신의 데이터에서</div>
-      <div style="margin-top:8px;font-size:15px;line-height:1.5">${head}</div>
-      ${big ? `<div class="disp" style="font-size:58px;line-height:1.1;color:#222">${big}</div>` : ''}
-      <div style="margin-top:6px;font-size:11px;color:rgba(0,0,0,.5)">${r.finding.sampleNote || ''}</div></div>`;
-  } else {
-    $('r-finding').innerHTML = `<div style="margin-top:10px;background:#fff;border:1.5px solid rgba(0,0,0,.15);border-radius:20px;padding:18px;text-align:center;font-size:13px;color:rgba(0,0,0,.55)">표본이 아직 부족해요 — 체크인이 쌓이면 발견이 나옵니다</div>`;
-  }
-  const h = r.haggleHighlight;
-  $('r-haggle').innerHTML = `<div style="font-size:10.5px;font-weight:700;letter-spacing:.08em;color:#333">흥정 하이라이트</div>
-    <div style="margin-top:6px;display:flex;align-items:baseline;gap:6px"><span style="font-size:13px">밀당이가 아껴준 총액</span><span class="disp" style="font-size:24px;color:#2b2b2b">${h.totalSaved}</span></div>
-    ${h.best ? `<div style="margin-top:4px;font-size:12px;color:rgba(0,0,0,.6)">최고의 합의 — ${h.best.menu} <strong>${h.best.originalLabel}</strong> → <strong>${h.best.adjustedLabel}</strong> (${h.best.when}) · 평균 <strong>${h.avgTurns}턴</strong></div>` : `<div style="margin-top:4px;font-size:12px;color:rgba(0,0,0,.6)">평균 ${h.avgTurns}턴 · 최장 ${h.longestTurns}턴</div>`}`;
-  $('r-disclaimer').textContent = r.disclaimer || '';
+  const c = r.completion;
+  $('r-sub').textContent = `${c.periodLabel.split(' ')[0]}간의 변화를 한 장에 담았어요`;
+  $('r-period').textContent = c.periodLabel;
+  $('r-headline').textContent = c.headline;
+  $('r-percent').textContent = c.usedPercent + '%';
+  $('r-summary').textContent = c.summaryLine;
+
+  const ICON = { CALORIE: '🔥', BLOAT: '💧', SKIN: '✨', DROWSY: '🍽' };
+  $('r-body').innerHTML = c.bodyChanges.map(b =>
+    `<div style="background:#fff;border-radius:12px;padding:12px 13px;display:flex;align-items:center;gap:10px">
+      <div style="width:28px;height:28px;flex:none;border-radius:50%;background:var(--y-soft);display:flex;align-items:center;justify-content:center;font-size:14px">${ICON[b.key] || ''}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:900">${b.label}</div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:2px">${b.value || b.note || ''}</div>
+      </div></div>`).join('');
+
   $('r-cta').textContent = r.nextChallenge.ctaLabel;
 }
 async function openShare() {
