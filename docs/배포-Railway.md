@@ -3,8 +3,8 @@
 > 프론트는 **Vercel**, 백엔드는 **Railway**. 가비아는 설정이 복잡해 쓰지 않습니다 (팀 결정 2026-08-18).
 > 이 문서대로 하면 **처음 배포까지 15분** 정도입니다.
 
-레포에 이미 들어 있는 것 — `Dockerfile` · `.dockerignore` · `$PORT` 바인딩 · Railway Postgres 변수 자동 인식.
-**따로 코드를 고칠 필요는 없습니다.**
+레포에 이미 들어 있는 것 — `Dockerfile` · `.dockerignore` · `$PORT` 바인딩.
+**코드를 고칠 필요는 없고**, Railway 쪽 변수만 넣으면 됩니다.
 
 ---
 
@@ -30,8 +30,18 @@ Railway가 `Dockerfile`을 자동으로 찾아 씁니다. 빌드 설정은 건�
 
 **2) Postgres 붙이기** — 같은 프로젝트에서 **New → Database → Add PostgreSQL**.
 
-붙이면 `PGHOST` `PGPORT` `PGDATABASE` `PGUSER` `PGPASSWORD`가 자동으로 들어옵니다.
-**`DB_URL`을 따로 넣지 않아도 붙습니다** — 앱이 이 변수들을 그대로 읽게 해 뒀습니다.
+⚠ **붙이는 것만으로는 앱이 DB를 못 찾습니다.** Railway는 DB 변수를 **다른 서비스에 자동 주입하지 않습니다.**
+앱 서비스의 Variables에서 **명시적으로 참조**해야 합니다:
+
+```
+DB_URL=jdbc:postgresql://${{Postgres.PGHOST}}:${{Postgres.PGPORT}}/${{Postgres.PGDATABASE}}
+DB_USERNAME=${{Postgres.PGUSER}}
+DB_PASSWORD=${{Postgres.PGPASSWORD}}
+```
+
+`Postgres` 자리는 **실제 DB 서비스 이름**입니다. 카드에 적힌 이름을 대소문자까지 그대로 쓰세요.
+
+> 안 넣으면 `Connection to localhost:5432 refused`로 기동에 실패하고 502가 뜹니다.
 
 **3) 환경변수 넣기** — 서비스 → **Variables**.
 
@@ -88,8 +98,8 @@ CORS는 **이미 전 오리진 열려 있습니다**(`allowedOriginPatterns("*")
 
 | 증상 | 원인 | 조치 |
 | --- | --- | --- |
-| 배포는 됐는데 502 | `$PORT`를 안 듣는 상태 | `Dockerfile`의 `--server.port=${PORT}` 확인. 직접 `server.port`를 다른 값으로 덮지 말 것 |
-| 기동 중 DB 오류 | Postgres 플러그인 미연결 | 같은 **프로젝트 안에** 붙였는지 확인. 다른 프로젝트면 변수가 안 넘어옴 |
+| 배포는 됐는데 502 | 기동 실패 (앱이 죽음) | **Logs를 먼저 보세요.** 대부분 DB 변수 누락입니다. `$PORT`를 덮어쓰지 않았는지도 확인 |
+| `Connection to localhost:5432 refused` | DB 변수를 앱 서비스에서 **참조하지 않음** | §2-2의 `DB_URL`·`DB_USERNAME`·`DB_PASSWORD` 세 줄을 넣기. 붙이는 것만으로는 안 넘어온다 |
 | `Table not found` | 프로필이 `prod` | `SPRING_PROFILES_ACTIVE=demo`인지 확인 |
 | 카카오 로그인 401 | `KAKAO_CLIENT_SECRET` 누락 | 새 콘솔은 시크릿이 **기본 활성화**. 없으면 토큰 교환이 401 |
 | 공유 카드 링크가 localhost | `PUBLIC_BASE_URL` 미설정 | 도메인 + `/v1`로 넣기 |
