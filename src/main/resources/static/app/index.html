@@ -1616,7 +1616,12 @@ async function shareStory() {
       await navigator.share(payload);   // 인스타 스토리는 이 시트 안에 뜬다
       return;
     }
-    // 파일 공유가 안 되는 브라우저(데스크톱 등) — 이미지를 내려주고 링크는 클립보드로
+    // 여기로 왔다는 건 공유 시트를 못 여는 환경이라는 뜻이다.
+    // 가장 흔한 이유는 HTTPS가 아니라서 — 브라우저가 Web Share API를 아예 안 열어준다.
+    if (!window.isSecureContext) {
+      toast('HTTPS에서만 공유 시트가 열려요 — 이미지를 저장했습니다');
+    }
+    // 이미지를 내려주고 링크는 클립보드로
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url; a.download = 'mildang-story.png'; a.click();

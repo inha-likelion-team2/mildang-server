@@ -43,16 +43,19 @@ public class DemoController {
     private final ChallengeService challengeService;
     private final ItemRepository itemRepository;
     private final CheckinRepository checkinRepository;
+    private final app.mildang.weight.WeightRepository weightRepository;
 
     public DemoController(DemoSeedService seedService, BatchJobs batchJobs,
                           ChallengeRepository challengeRepository, ChallengeService challengeService,
-                          ItemRepository itemRepository, CheckinRepository checkinRepository) {
+                          ItemRepository itemRepository, CheckinRepository checkinRepository,
+                          app.mildang.weight.WeightRepository weightRepository) {
         this.seedService = seedService;
         this.batchJobs = batchJobs;
         this.challengeRepository = challengeRepository;
         this.challengeService = challengeService;
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
+        this.weightRepository = weightRepository;
     }
 
     @GetMapping("/ping")
@@ -113,6 +116,10 @@ public class DemoController {
         }
         checkinRepository.findByChallengeIdIn(List.of(challenge.getId()))
                 .forEach(c -> c.setDate(c.getDate().minusDays(days)));
+        // 체중도 같이 옮긴다 — 안 옮기면 챌린지만 과거로 가고 체중은 제자리라
+        // 진행률 카드의 일차별 체중이 어긋난다 (2026-08-18)
+        weightRepository.findByChallengeIdIn(List.of(challenge.getId()))
+                .forEach(w -> w.setDate(w.getDate().minusDays(days)));
 
         return Map.of("mocked", true,
                 "dayIndex", challengeService.dayIndex(challenge, Instant.now()),

@@ -101,3 +101,25 @@ mildang:
     enabled: false
   jwt:
     secret: ${JWT_SECRET}
+
+---
+# 폰에서 «스토리에 공유하기»(Web Share API)를 시험할 때만 쓰는 프로필.
+# 브라우저는 HTTPS(또는 localhost)가 아니면 navigator.share를 아예 열어주지 않는다.
+# 자체 서명 인증서라 폰에서 «안전하지 않음» 경고가 뜬다 — 계속을 눌러 들어가면 된다.
+spring:
+  config:
+    activate:
+      on-profile: https
+  ssl:
+    bundle:
+      jks:
+        dev:
+          keystore:
+            location: classpath:mildang-dev.p12
+            password: mildang-dev
+            type: PKCS12
+
+server:
+  port: 8443
+  ssl:
+    bundle: dev

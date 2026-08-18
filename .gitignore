@@ -38,3 +38,6 @@ out/
 
 # 로컬 서버 로그
 bootrun.log
+
+# 로컬 폰 테스트용 자체 서명 인증서 (개발 전용)
+src/main/resources/mildang-dev.p12
