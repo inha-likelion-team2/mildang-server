@@ -29,6 +29,7 @@ public class AuthService {
     private final UserRepository userRepository;
     private final UserSessionRepository sessionRepository;
     private final KakaoVerifier kakaoVerifier;
+    private final KakaoVerifier realKakaoVerifier;
     private final KakaoTokenClient kakaoTokenClient;
     private final String restApiKey;
     private final String authorizeUri;
@@ -37,11 +38,14 @@ public class AuthService {
     private final boolean demoEnabled;
 
     public AuthService(UserRepository userRepository, UserSessionRepository sessionRepository,
-                       KakaoVerifier kakaoVerifier, KakaoTokenClient kakaoTokenClient,
+                       KakaoVerifier kakaoVerifier,
+                       @org.springframework.beans.factory.annotation.Qualifier("realKakaoVerifier")
+                       KakaoVerifier realKakaoVerifier, KakaoTokenClient kakaoTokenClient,
                        JwtProvider jwtProvider, MildangProps props) {
         this.userRepository = userRepository;
         this.sessionRepository = sessionRepository;
         this.kakaoVerifier = kakaoVerifier;
+        this.realKakaoVerifier = realKakaoVerifier;
         this.kakaoTokenClient = kakaoTokenClient;
         this.jwtProvider = jwtProvider;
         this.refreshTtlDays = props.jwt().refreshTtlDays();
@@ -65,7 +69,8 @@ public class AuthService {
     @Transactional
     public TokenResponse kakaoLogin(AuthDtos.KakaoLoginRequest request) {
         String idToken = kakaoTokenClient.exchange(request.code(), request.redirectUri());
-        return issueFor(kakaoVerifier.verify(idToken), request.deviceId(), request.pushToken());
+        // 카카오가 발급한 토큰만 들어오는 길이다 — demo라도 통과시키지 않는다
+        return issueFor(realKakaoVerifier.verify(idToken), request.deviceId(), request.pushToken());
     }
 
     /** 카카오에서 확인된 sub로 계정을 찾거나 만들고 토큰을 발급한다 (두 로그인 경로 공용) */
