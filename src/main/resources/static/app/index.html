@@ -1135,10 +1135,10 @@ async function doScan(file) {
   const form = new FormData(); form.append('image', file); form.append('challengeId', challengeId);
   try {
     const r = await call('POST', '/scans', form, true);
-    scanId = r.id; scanData = r; renderScan(); nav('scanresult');
+    scanId = r.id; scanData = r; selectedMenuId = null; renderScan(); nav('scanresult');
   } finally {
     $('cam-hint').textContent = '탭해서 메뉴판 사진 선택';
-    $('cam-status').textContent = '촬영하면 가격표가 나와요 · 실 AI는 수십 초 걸릴 수 있어요';
+    $('cam-status').textContent = '촬영하면 3초 안에 가격표가 나와요';
     $('cam-file').value = '';
   }
 }

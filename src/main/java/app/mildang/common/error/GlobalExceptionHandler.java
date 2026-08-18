@@ -38,6 +38,15 @@ public class GlobalExceptionHandler {
                         "요청 형식을 읽을 수 없어요. JSON과 UTF-8 인코딩을 확인해 주세요.", null, null));
     }
 
+    /** 필수 쿼리/폼 파라미터 누락 — 예전엔 500 «문제가 생겼어요»로 나갔다 */
+    @ExceptionHandler(org.springframework.web.bind.MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> missingParam(
+            org.springframework.web.bind.MissingServletRequestParameterException e) {
+        return ResponseEntity.status(ErrorCode.VALIDATION_FAILED.status())
+                .body(ErrorResponse.of(ErrorCode.VALIDATION_FAILED,
+                        e.getParameterName() + " 값이 필요해요.", e.getParameterName(), null));
+    }
+
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResource(NoResourceFoundException e) {
         return ResponseEntity.status(ErrorCode.NOT_FOUND.status())
