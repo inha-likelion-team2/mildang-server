@@ -114,7 +114,59 @@ Tomcat started on port XXXX (http) with context path '/v1'
 
 ---
 
-## 5. 비용
+## 5. AI 서버 붙이기 (별도 서비스)
+
+AI는 **같은 프로젝트 안의 두 번째 서비스**로 올립니다. 백엔드 리포는 다시 올리지 않습니다 — 코드 변경 없이 환경변수 두 줄만 추가하면 됩니다.
+
+**1) New → GitHub Repo →** `inha-likelion-team2/Mildang-AI-Server`
+
+**2) Settings → Source → Branch = `ai-server-integration`**
+
+⚠ `main`이 아닙니다. main은 8/12 초기 커밋(`22403cc`)에서 멈춰 있고, 백엔드가 기대하는 라우트·스키마는 전부 `ai-server-integration`(`f296e3f`, 1097줄 앞)에 있습니다. main으로 올리면 계약이 안 맞습니다.
+(병합은 AI 리포 이슈 #4 — 병합되면 이 항목을 `main`으로 되돌리세요.)
+
+**3) Settings → Deploy → Start Command**
+
+```
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
+Nixpacks가 `requirements.txt`를 보고 파이썬 런타임을 잡습니다. Dockerfile은 필요 없습니다.
+
+> **Healthcheck Path는 비워둡니다.** AI 서버에 `/health`가 없어서 넣으면 404로 배포 실패 판정이 납니다.
+
+**4) Variables** (AI 서비스 쪽)
+
+| 변수 | 값 |
+| --- | --- |
+| `OPENAI_API_KEY` | OpenAI 키 |
+| `OPENAI_MODEL` | 모델명 (예: `.env.example`의 `gpt-5.6-luna`) |
+
+둘 다 없으면 `ConfigurationError`로 호출 시점에 터집니다 — 기동은 되므로 로그가 아니라 응답에서 드러납니다.
+
+**5) Networking → Generate Domain** → `https://<ai>.up.railway.app`
+
+**6) 백엔드 서비스** Variables에 추가 (저장하면 자동 재시작)
+
+```
+AI_BASE_URL=https://<ai>.up.railway.app
+AI_FAKE=false
+```
+
+⚠ `AI_BASE_URL`에 `/v1`도 `/internal`도 붙이지 마세요. 백엔드가 `/internal/haggle-turn` 식으로 붙입니다.
+
+**7) 확인** — 백엔드가 부르는 6개와 AI가 여는 6개가 일치해야 합니다.
+
+```
+/internal/analyze-image   /internal/analyze-text   /internal/dashboard-tip
+/internal/finding         /internal/haggle-turn    /internal/scan-comment
+```
+
+> 스캔 실측이 21.5초라 `AI_READ_TIMEOUT`은 45초로 잡혀 있습니다. 실모델이 더 느리면 여기를 올리세요.
+
+---
+
+## 6. 비용
 
 Railway 무료 크레딧으로 해커톤 기간은 충분합니다. Postgres + 앱 컨테이너 하나면 됩니다.
 **슬립(휴면)이 없어서** 심사위원이 아무 때나 눌러도 바로 뜹니다 — 이게 무료 PaaS 중에 Railway를 고른 이유입니다.

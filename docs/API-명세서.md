@@ -6,6 +6,90 @@
 
 > **DB 스키마 변경분은 `docs/DB-변경-v3.1.md`** — v3.0 이후 추가된 테이블·컬럼·열거값을 마이그레이션 DDL과 함께 정리했습니다.
 
+## 빠른 시작 (프론트)
+
+**배포 주소**
+
+```
+https://mildang-server-production.up.railway.app/v1
+```
+
+CORS는 전 오리진 열려 있어서 Vercel 프리뷰 주소가 배포마다 바뀌어도 그대로 됩니다.
+
+```
+NEXT_PUBLIC_API_BASE=https://mildang-server-production.up.railway.app/v1
+```
+
+**프론트가 알아야 할 건 두 가지** — 위 주소, 그리고 로그인으로 받은 토큰을 `Authorization: Bearer …`로 붙이는 것.
+
+```ts
+const BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
+export async function api(path: string, init: RequestInit = {}) {
+  const token = localStorage.getItem("mildang.token");
+  const res = await fetch(BASE + path, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...init.headers,
+    },
+  });
+
+  // 성공은 봉투 없이 데이터 그대로, 실패는 { error: { code, message } }
+  const body = res.status === 204 ? null : await res.json();
+  if (!res.ok) {
+    // message는 사용자에게 그대로 보여줘도 되는 한국어입니다
+    throw Object.assign(new Error(body?.error?.message ?? "요청에 실패했어요"), {
+      status: res.status,
+      code: body?.error?.code,
+      detail: body?.error?.detail,
+    });
+  }
+  return body;
+}
+```
+
+**로그인 → 토큰 저장**
+
+```ts
+const r = await api("/auth/social", {
+  method: "POST",
+  body: JSON.stringify({ provider: "KAKAO", idToken: "judge-01", deviceId: "web-1" }),
+});
+localStorage.setItem("mildang.token", r.accessToken);
+```
+
+> ⚠ `idToken`에 아무 문자열이나 넣으면 그게 곧 계정이 됩니다 — **demo 배포에서만** 되는 지름길입니다.
+> 실제 카카오 로그인은 §2의 `/auth/kakao` 흐름을 쓰세요.
+
+**시연 상태 만들기** — 4일차·잔액 52·체중 4일치가 들어간 화면을 한 번에 만듭니다.
+
+```ts
+await api("/demo/seed", { method: "POST", body: JSON.stringify({ scenario: "DAY4_ACTIVE" }) });
+```
+
+`FRESH` `DAY4_ACTIVE` `W2_DAY8` `W4_DAY12` `LOW_BALANCE` `EXPIRED_CONFIRM` `COMPLETED` 중 고르면 됩니다.
+
+**첫 화면 하나 그려보기**
+
+```ts
+const d = await api("/challenges/current");
+d.budget.balance;        // 52
+d.budget.mealsLeft;      // 3     → 「잔액 52 · 앞으로 3끼」
+d.progress.days;         // 7칸   → 체크박스 (future면 비활성)
+d.todayNotice.text;      // 「오늘 잡힌 약속은 없어요」
+d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
+```
+
+**막히면 볼 곳**
+
+- 화면별로 어떤 API를 부르는지 → §3~§9
+- 흔한 함정 12개 → **§12 프론트 체크리스트**
+- 눌러볼 수 있는 참고 화면 → `/v1/app/index.html` (백엔드가 만든 테스트용 화면. 같은 API를 씁니다)
+
+---
+
 ## 개정 이력
 
 | 날짜 | 변경 |
