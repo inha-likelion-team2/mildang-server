@@ -43,7 +43,10 @@
     padding: 14px 22px calc(28px + env(safe-area-inset-bottom)); overflow-y: auto;
     -webkit-overflow-scrolling: touch; }
   .scr.on { display: flex; }
-  .grow { flex: 1; }
+  /* 세로 flex라 내용이 길면 자식이 «눌려서» 잘린다 — 눌리지 말고 넘치게 두고 화면이 스크롤한다.
+     리포트 카드의 아래 두 칸(피부 트러블·식곤증)이 기기 높이에 따라 잘리던 원인 */
+  .scr > *:not(.grow) { flex-shrink: 0; }
+  .grow { flex: 1; min-height: 0; }
 
   /* 주 버튼 — 노란 둥근 사각형 (식사 하기 / 분석 하기 / 설정 하기 / 완주 성공) */
   .pill-btn { border: none; background: var(--y); color: var(--ink); border-radius: 14px;
