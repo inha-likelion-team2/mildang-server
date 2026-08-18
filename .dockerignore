@@ -1,0 +1,7 @@
+build/
+.gradle/
+.git/
+.idea/
+*.log
+bootrun.log
+src/main/resources/mildang-dev.p12
