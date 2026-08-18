@@ -82,7 +82,8 @@ public class ChallengeDtos {
                                   List<PrepaidItemView> prepaidItems,
                                   CheckinView checkin, List<ExpiredConfirmView> expiredConfirm,
                                   List<app.mildang.weight.WeightDtos.WeightPoint> weights,
-                                  ProgressView progress, TodayNoticeView todayNotice) {
+                                  ProgressView progress, TodayNoticeView todayNotice,
+                                  HaggleQuotaView haggleQuota) {
     }
 
     /** 오늘(05:00 경계) 기록된 것 — 메인 화면 "오늘 먹은 것" 블록. 비어 있으면 items=[] */
@@ -122,6 +123,10 @@ public class ChallengeDtos {
      * 화면 「오늘의 알림」 카드 — <b>오늘 잡혀 있는 약속</b>을 보여준다 (2026-08-17 확인).
      * 밀당이 말풍선의 AI 팁({@link TipView})과는 다른 자리다.
      */
+    /** 결제 화면의 「AI 밀당 대화 40회」 — unlimited면 limit·remaining이 null이다 */
+    public record HaggleQuotaView(Integer limit, int used, Integer remaining, boolean unlimited) {
+    }
+
     public record TodayNoticeView(String date, String text, List<TodayPromiseView> promises) {
     }
 

@@ -59,12 +59,14 @@ public class ChallengeService {
     private final CheckinRepository checkinRepository;
     private final app.mildang.tip.TipService tipService;
     private final app.mildang.weight.WeightService weightService;
+    private final app.mildang.haggle.HaggleService haggleService;
     private final boolean demoEnabled;
 
     public ChallengeService(ChallengeRepository challengeRepository, UserRepository userRepository,
                             PaymentRepository paymentRepository, ItemRepository itemRepository,
                             CheckinRepository checkinRepository, app.mildang.tip.TipService tipService,
                             @org.springframework.context.annotation.Lazy app.mildang.weight.WeightService weightService,
+                            @org.springframework.context.annotation.Lazy app.mildang.haggle.HaggleService haggleService,
                             MildangProps props) {
         this.challengeRepository = challengeRepository;
         this.userRepository = userRepository;
@@ -73,6 +75,7 @@ public class ChallengeService {
         this.checkinRepository = checkinRepository;
         this.tipService = tipService;
         this.weightService = weightService;
+        this.haggleService = haggleService;
         this.demoEnabled = props.demo().enabled();
     }
 
@@ -373,7 +376,8 @@ public class ChallengeService {
                 expiredConfirm,
                 weightService.series(challenge.getId()),
                 progress(challenge, now),
-                todayNotice(challenge, now));
+                todayNotice(challenge, now),
+                haggleService.quota(challenge));
     }
 
     /**

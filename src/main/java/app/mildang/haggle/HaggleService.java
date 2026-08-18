@@ -74,6 +74,32 @@ public class HaggleService {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 이번 판에 몇 번 남았나 — 무제한이면 remaining이 null이다.
+     * 화면이 미리 «몇 번 남음»을 보여줄 수 있게 대시보드에도 실린다.
+     */
+    @Transactional(readOnly = true)
+    public app.mildang.challenge.ChallengeDtos.HaggleQuotaView quota(Challenge challenge) {
+        int limit = challenge.getPeriod().haggleQuota();
+        int used = (int) sessionRepository.countDistinctItems(challenge.getId());
+        if (challenge.getPeriod().isHaggleUnlimited()) {
+            return new app.mildang.challenge.ChallengeDtos.HaggleQuotaView(null, used, null, true);
+        }
+        return new app.mildang.challenge.ChallengeDtos.HaggleQuotaView(
+                limit, used, Math.max(0, limit - used), false);
+    }
+
+    private void requireQuota(Challenge challenge) {
+        if (challenge.getPeriod().isHaggleUnlimited()) {
+            return;
+        }
+        long used = sessionRepository.countDistinctItems(challenge.getId());
+        if (used >= challenge.getPeriod().haggleQuota()) {
+            // 판정하지 않는다 — 기록·선차감은 그대로 된다는 걸 함께 알려준다
+            throw new ApiException(ErrorCode.HAGGLE_QUOTA_EXCEEDED);
+        }
+    }
+
     @Transactional
     public OpenResponse open(String userId, OpenRequest request) {
         Challenge challenge = challengeService.requireActive(userId);
@@ -91,8 +117,15 @@ public class HaggleService {
         }
 
         // 항목당 열린 세션 1개 — 기존 세션은 버리고 새로 연다 (재흥정 = 턴 초기화, §7.4)
-        sessionRepository.findFirstByItemIdAndStatus(item.getId(), "OPEN")
-                .ifPresent(open -> open.setStatus("ABANDONED"));
+        var reopened = sessionRepository.findFirstByItemIdAndStatus(item.getId(), "OPEN");
+        reopened.ifPresent(open -> open.setStatus("ABANDONED"));
+
+        // 요금제별 대화 횟수 (결제 화면의 「AI 밀당 대화 40회」). 대화 1번 = 세션 하나.
+        // 같은 항목을 다시 여는 «재흥정»은 새로 세지 않는다 — 이미 연 대화를 이어가는 셈이라
+        // 이것까지 세면 마음 바꿀 때마다 횟수가 깎인다.
+        if (reopened.isEmpty()) {
+            requireQuota(challenge);
+        }
 
         Instant now = Instant.now();
         int balance = challenge.getBalance();
@@ -100,6 +133,7 @@ public class HaggleService {
         HaggleSession session = new HaggleSession();
         session.setId(Ids.next(Ids.Prefix.HAGGLE));
         session.setItemId(item.getId());
+        session.setChallengeId(challenge.getId());
         session.setUserId(userId);
         session.setEntryPoint(request.entryPoint());
         session.setStatus("OPEN");

@@ -21,6 +21,10 @@ public class HaggleSession {
     @Column(nullable = false)
     private String itemId;
 
+    /** 횟수는 «이번 판» 기준이라 챌린지로 센다 */
+    @Column(nullable = false, length = 40)
+    private String challengeId;
+
     @Column(nullable = false)
     private String userId;
 

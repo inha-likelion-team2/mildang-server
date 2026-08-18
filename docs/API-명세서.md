@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-18 (5) | **밀당 대화 횟수 제한 구현** — 결제 화면의 「AI 밀당 대화 40회」. **대화 1번 = 1회**(같은 항목 재흥정은 안 셈), 1주 20·2주 40·4주 무제한. 소진 시 `POST /haggles` → **409 `HAGGLE_QUOTA_EXCEEDED`**. `current.haggleQuota{limit,used,remaining,unlimited}` 신설 |
 | 2026-08-18 (4) | 리포트 「내 몸의 변화」 첫 칸을 **칼로리 → 체중 변화**로 (팀 결정). 챌린지 첫 기록과 마지막 기록을 비교해 「58kg → 54kg」·「4.0kg 줄었어요」 |
 | 2026-08-18 (3) | **카카오 웹 로그인 신설** — `GET /auth/kakao/authorize-url?redirectUri=` (인가 화면 주소), `POST /auth/kakao` {code, redirectUri, deviceId} (인가 코드 → 서버가 토큰 교환 → id_token 검증 → 우리 토큰). 검증기는 **프로필이 아니라 앱 키 유무**로 갈린다 |
 | 2026-08-18 (2) | **리포트에 `completion` 신설** — 확정 와이어프레임 231:1237의 완주 카드를 그대로 그릴 수 있게 문구까지 만들어 보낸다(기간·헤드라인·사용률·요약 + 「내 몸의 변화」 4칸). ⚠ 칼로리 칸은 재료가 없어 `value: null` |
@@ -393,6 +394,7 @@
 | `progress.days[].weighed` | 그날 체중을 남겼는지. 진행률 카드가 일차 아래에 체중을 같이 그려서 함께 줍니다(값 자체는 `weights[]`에) |
 | `progress.days[].checkin` / `.recorded` | 그날 **컨디션 체크인을 했는지** / **기록을 남겼는지**. 체크박스를 어느 쪽으로 칠할지는 화면이 정하세요 — 그래서 둘 다 줍니다 |
 | `progress.days[].future` | 아직 오지 않은 날. 체크박스를 비워두면 됩니다 |
+| `haggleQuota` | 이번 판에 남은 **밀당 대화 횟수**. `unlimited: true`면 `limit`·`remaining`이 없습니다(4주). 벽에 부딪히기 전에 화면이 미리 보여줄 수 있게 대시보드에 함께 실립니다 |
 | `todayNotice` | 화면 「오늘의 알림」 카드 = **오늘 잡혀 있는 약속**입니다. ⚠ 밀당이 말풍선의 AI 팁(`tip`)과 **다른 자리**입니다 |
 | `todayNotice.text` | 그대로 노출 가능한 문구 — 0건 「오늘 잡힌 약속은 없어요」 · 1건 「오늘 치킨 약속이 있어요」 · 2건 이상 「오늘 약속이 2건 있어요」 |
 | `todayNotice.promises` | 오늘 요일로 잡힌 약속(`PENDING`·`HAGGLED`·`PREPAID`). **약속이 없어도 카드는 남습니다** — `promises: []`, `todayNotice`는 `null`이 되지 않습니다 |

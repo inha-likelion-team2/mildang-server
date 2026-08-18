@@ -20,6 +20,7 @@ public enum ErrorCode {
     CHALLENGE_NOT_COMPLETED(HttpStatus.CONFLICT, "아직 완주 전이에요."),
     ITEM_ALREADY_RECORDED(HttpStatus.CONFLICT, "이미 기록된 항목이에요."),
     HAGGLE_TURN_EXCEEDED(HttpStatus.CONFLICT, "흥정은 10턴까지예요. 이제 정리해 볼까요?"),
+    HAGGLE_QUOTA_EXCEEDED(HttpStatus.CONFLICT, "이번 판 밀당은 다 썼어요. 기록과 선차감은 그대로 됩니다."),
     HAGGLE_SESSION_CLOSED(HttpStatus.CONFLICT, "이미 끝난 흥정이에요."),
     ITEM_EXPIRED(HttpStatus.CONFLICT, "지난 항목으로는 흥정을 열 수 없어요."),
     IMAGE_TOO_LARGE(HttpStatus.CONTENT_TOO_LARGE, "이미지는 10MB 이하로 올려주세요."),
