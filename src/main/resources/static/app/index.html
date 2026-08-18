@@ -1425,7 +1425,7 @@ async function loadReport() {
   $('r-percent').textContent = c.usedPercent + '%';
   $('r-summary').textContent = c.summaryLine;
 
-  const ICON = { CALORIE: '🔥', BLOAT: '💧', SKIN: '✨', DROWSY: '🍽' };
+  const ICON = { WEIGHT: '⚖️', BLOAT: '💧', SKIN: '✨', DROWSY: '🍽' };
   $('r-body').innerHTML = c.bodyChanges.map(b =>
     `<div style="background:#fff;border-radius:12px;padding:12px 13px;display:flex;align-items:center;gap:10px">
       <div style="width:28px;height:28px;flex:none;border-radius:50%;background:var(--y-soft);display:flex;align-items:center;justify-content:center;font-size:14px">${ICON[b.key] || ''}</div>

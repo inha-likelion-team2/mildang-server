@@ -133,6 +133,11 @@ public class DemoSeedService {
         checkin(c, 3, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
         checkin(c, 2, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.MID);
         checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        // 리포트 「내 몸의 변화」의 체중 칸 재료 — 두 번 이상 재야 «변화»가 나온다
+        weight(c, 7, "58.0");
+        weight(c, 5, "57.0");
+        weight(c, 3, "55.5");
+        weight(c, 1, "54.0");
         c.setCompletedAt(Instant.now());
         return finalize(c);
     }

@@ -90,8 +90,7 @@ public class ReportService {
         List<Checkin> late = checkins.subList(checkins.size() - half, checkins.size());
 
         List<ReportDtos.BodyChange> changes = new java.util.ArrayList<>();
-        // 칼로리는 아직 재료가 없다 — AI가 메뉴별 kcal을 주기 시작하면 채운다 (AI 레포 이슈)
-        changes.add(new ReportDtos.BodyChange("CALORIE", "칼로리 지출", null, "메뉴별 칼로리 정보가 아직 없어요"));
+        changes.add(weightChange(challenge));
         changes.add(levelChange("BLOAT", "붓기 효과", early, late, Checkin::getBloat));
         changes.add(countChange("SKIN", "피부 트러블", early, late, Checkin::getSkin));
         changes.add(percentChange("DROWSY", "식곤증 개선", early, late, Checkin::getDrowsy));
@@ -103,6 +102,30 @@ public class ReportService {
         return new ReportDtos.Completion(
                 challenge.getPeriod().label() + " 챌린지 완주 🎉", headline,
                 usedPercent, total, spent, leftover, summary, changes);
+    }
+
+    /**
+     * 「58kg → 54kg」 — 챌린지 기간의 첫 기록과 마지막 기록을 비교한다.
+     * 두 번은 재야 «변화»라고 말할 수 있으므로 한 건뿐이면 비워 둔다.
+     */
+    private ReportDtos.BodyChange weightChange(Challenge challenge) {
+        List<app.mildang.weight.WeightLog> logs =
+                weightRepository.findByChallengeIdOrderByDateAsc(challenge.getId());
+        if (logs.size() < 2) {
+            return new ReportDtos.BodyChange("WEIGHT", "체중 변화", null, "체중 기록이 모자라요");
+        }
+        java.math.BigDecimal first = logs.getFirst().getWeightKg();
+        java.math.BigDecimal last = logs.getLast().getWeightKg();
+        java.math.BigDecimal delta = last.subtract(first);
+        String note = delta.signum() == 0 ? "그대로예요"
+                : delta.abs().toPlainString() + "kg " + (delta.signum() < 0 ? "줄었어요" : "늘었어요");
+        return new ReportDtos.BodyChange("WEIGHT", "체중 변화",
+                trim(first) + "kg → " + trim(last) + "kg", note);
+    }
+
+    /** 58.0 → 「58」, 57.5 → 「57.5」 — 화면이 좁아 소수점 0은 떼고 보여준다 */
+    private static String trim(java.math.BigDecimal value) {
+        return value.stripTrailingZeros().toPlainString();
     }
 
     /** 「보통 → 좋음」 */
@@ -155,6 +178,7 @@ public class ReportService {
     private final ChallengeRepository challengeRepository;
     private final ItemRepository itemRepository;
     private final CheckinRepository checkinRepository;
+    private final app.mildang.weight.WeightRepository weightRepository;
     private final UserRepository userRepository;
     private final AiGateway aiGateway;
     private final ObjectMapper objectMapper;
@@ -163,12 +187,14 @@ public class ReportService {
 
     public ReportService(ReportRepository reportRepository, ChallengeRepository challengeRepository,
                          ItemRepository itemRepository, CheckinRepository checkinRepository,
+                         app.mildang.weight.WeightRepository weightRepository,
                          UserRepository userRepository, AiGateway aiGateway, ObjectMapper objectMapper,
                          app.mildang.common.config.MildangProps props) {
         this.reportRepository = reportRepository;
         this.challengeRepository = challengeRepository;
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
+        this.weightRepository = weightRepository;
         this.userRepository = userRepository;
         this.aiGateway = aiGateway;
         this.objectMapper = objectMapper;
