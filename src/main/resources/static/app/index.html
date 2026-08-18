@@ -365,7 +365,7 @@
   </div>
   <div style="margin-top:18px;text-align:center">
     <div style="font-size:19px;font-weight:900">메뉴판이 프레임 안에 들어오게</div>
-    <div id="cam-status" style="margin-top:8px;font-size:13px;color:rgba(255,255,255,.6)">촬영하면 3초 안에 가격표가 나와요</div>
+    <div id="cam-status" style="margin-top:8px;font-size:13px;color:rgba(255,255,255,.6)">촬영하면 잠시 뒤 가격표가 나와요</div>
   </div>
   <div onclick="pickImage()" style="margin-top:20px;flex:1;border:2px solid rgba(255,255,255,.35);border-radius:20px;display:flex;align-items:center;justify-content:center;cursor:pointer">
     <div id="cam-hint" style="font-size:13px;color:rgba(255,255,255,.45)">탭해서 메뉴판 사진 선택</div>
@@ -1298,7 +1298,7 @@ async function doScan(file) {
     scanId = r.id; scanData = r; selectedMenuId = null; renderScan(); nav('scanresult');
   } finally {
     $('cam-hint').textContent = '탭해서 메뉴판 사진 선택';
-    $('cam-status').textContent = '촬영하면 3초 안에 가격표가 나와요';
+    $('cam-status').textContent = '촬영하면 잠시 뒤 가격표가 나와요';
     $('cam-file').value = '';
   }
 }

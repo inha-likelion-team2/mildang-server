@@ -120,10 +120,9 @@ AI는 **같은 프로젝트 안의 두 번째 서비스**로 올립니다. 백�
 
 **1) New → GitHub Repo →** `inha-likelion-team2/Mildang-AI-Server`
 
-**2) Settings → Source → Branch = `ai-server-integration`**
+**2) Settings → Source → Branch = `main`**
 
-⚠ `main`이 아닙니다. main은 8/12 초기 커밋(`22403cc`)에서 멈춰 있고, 백엔드가 기대하는 라우트·스키마는 전부 `ai-server-integration`(`f296e3f`, 1097줄 앞)에 있습니다. main으로 올리면 계약이 안 맞습니다.
-(병합은 AI 리포 이슈 #4 — 병합되면 이 항목을 `main`으로 되돌리세요.)
+2026-08-18 `ai-server-integration → main` 병합 완료 (AI 리포 이슈 #4). 두 브랜치 모두 `7917e8e`로 동일하니 **`main` 기준으로 올리면 됩니다.**
 
 **3) Settings → Deploy → Start Command**
 
