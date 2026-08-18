@@ -21,6 +21,16 @@ public class AuthInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // CORS preflight(OPTIONS)는 그냥 통과시킨다. 브라우저는 preflight에 Authorization을
+        // 싣지 않으므로 여기서 토큰을 요구하면 «본 요청을 보내도 되는지» 묻는 단계에서 막혀
+        // 다른 오리진의 FE가 보호된 경로를 아예 못 부른다.
+        //
+        // 게다가 preflight의 handler는 컨트롤러가 아니라 Spring 내부 PreFlightHandler라
+        // ExceptionHandlerExceptionResolver가 @RestControllerAdvice를 찾지 못한다. 그래서
+        // 여기서 던진 ApiException이 401이 아니라 «500 Internal Server Error»로 새어나갔다.
+        if (org.springframework.web.cors.CorsUtils.isPreFlightRequest(request)) {
+            return true;
+        }
         String header = request.getHeader("Authorization");
         if (header == null || !header.startsWith("Bearer ")) {
             throw new ApiException(ErrorCode.TOKEN_INVALID);
