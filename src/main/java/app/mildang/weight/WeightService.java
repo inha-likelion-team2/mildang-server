@@ -69,6 +69,16 @@ public class WeightService {
                 .map(WeightLog::getWeightKg).orElse(null);
     }
 
+    /**
+     * 가장 최근에 잰 체중 (없으면 null). 체크인 화면 스테퍼의 <b>출발점</b>으로 쓴다 —
+     * 출발점이 없으면 «+ 한 번 눌렀더니 60kg»처럼 엉뚱한 값이 기록된다.
+     */
+    @Transactional(readOnly = true)
+    public BigDecimal latestValue(String challengeId) {
+        List<WeightLog> logs = weightRepository.findByChallengeIdOrderByDateAsc(challengeId);
+        return logs.isEmpty() ? null : logs.getLast().getWeightKg();
+    }
+
     /** 대시보드 그래프용 — 챌린지 시작부터 기록된 날만, 날짜순 */
     public List<WeightPoint> series(String challengeId) {
         return weightRepository.findByChallengeIdOrderByDateAsc(challengeId).stream()

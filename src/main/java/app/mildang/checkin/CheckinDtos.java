@@ -8,7 +8,9 @@ public class CheckinDtos {
 
     public record TodayResponse(String date, int dayIndex, boolean done, Answers answers,
                                 List<Question> questions, CheckinDays checkinDays,
-                                java.math.BigDecimal weightKg) {
+                                java.math.BigDecimal weightKg,
+                                /** 아직 오늘 안 쟀을 때 스테퍼가 출발할 값 (가장 최근 기록) */
+                                java.math.BigDecimal lastWeightKg) {
     }
 
     public record Answers(@NotNull ConditionValue BLOAT, @NotNull ConditionValue SKIN,
@@ -26,7 +28,9 @@ public class CheckinDtos {
     public record PutRequest(@NotNull @Valid Answers answers,
                              @jakarta.validation.constraints.DecimalMin("20.0")
                              @jakarta.validation.constraints.DecimalMax("300.0")
-                             java.math.BigDecimal weightKg) {
+                             java.math.BigDecimal weightKg,
+                                /** 아직 오늘 안 쟀을 때 스테퍼가 출발할 값 (가장 최근 기록) */
+                                java.math.BigDecimal lastWeightKg) {
     }
 
     public record PutResponse(String id, String date, boolean done, Answers answers,

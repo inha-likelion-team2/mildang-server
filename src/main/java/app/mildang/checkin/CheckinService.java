@@ -50,7 +50,8 @@ public class CheckinService {
                 existing.map(c -> new Answers(c.getBloat(), c.getSkin(), c.getDrowsy())).orElse(null),
                 QUESTIONS,
                 checkinDays(challenge, now),
-                weightService.todayValue(challenge.getId(), date));
+                weightService.todayValue(challenge.getId(), date),
+                weightService.latestValue(challenge.getId()));
     }
 
     /**
