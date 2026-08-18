@@ -100,6 +100,15 @@ public class AnalysisService {
                 null, Map.of("candidates", detail));
     }
 
+    /** AI가 못 알아들었을 때 대신 내미는 후보 — 기본 프리셋에서 3개 */
+    private List<Map<String, Object>> fallbackCandidates() {
+        return app.mildang.item.Presets.DEFAULTS.stream().limit(3)
+                .map(p -> Map.<String, Object>of(
+                        "name", p.name(), "points", p.points(), "pm", p.pm(),
+                        "confidence", p.confidence().name()))
+                .toList();
+    }
+
     /** 검증 게이트(§15.8.2) — 위반·오류 시 재시도 1회 → 422/503 */
     private Estimate callWithRetry(String query) {
         EstimateRequest aiRequest = EstimateRequest.freetext(query);
@@ -120,8 +129,10 @@ public class AnalysisService {
         if (lastUnavailable != null) {
             throw new ApiException(ErrorCode.AI_UNAVAILABLE);
         }
+        // 게이트를 두 번 못 넘으면 예전엔 «후보 0개»로 막다른 길이 됐다. 실 AI가 근거에 기준 수량을
+        // 빼먹기만 해도 사용자가 아무것도 못 하게 된다 — 그럴 땐 자주 먹는 것으로라도 고르게 한다.
         throw new ApiException(ErrorCode.ANALYSIS_FAILED, ErrorCode.ANALYSIS_FAILED.defaultMessage(),
-                null, Map.of("candidates", List.of()));
+                null, Map.of("candidates", fallbackCandidates()));
     }
 
     /**

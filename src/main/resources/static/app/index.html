@@ -1294,6 +1294,7 @@ function renderScanTop() {
   const m = r.menus.find(x => x.id === selectedMenuId);
   if (!m) { $('sc-rec').innerHTML = ''; return; }
   const shown = m.item ? m.item.points : m.points;
+  // 비교할 메뉴가 없으면(스캔에 메뉴가 하나뿐) 서버가 코멘트를 만들지 않는다 — 계속 «보는 중»으로 두지 않는다
   const comment = (m.comment !== undefined && m.comment !== null)
     ? m.comment
     : (r.recommendation && r.recommendation.menuId === m.id ? r.recommendation.comment : '');
@@ -1315,7 +1316,7 @@ async function selectMenu(menuId) {
   if (m.comment !== undefined && m.comment !== null) return;
   try {
     const c = await call('POST', `/scans/${scanData.id}/menus/${menuId}/comment`, {});
-    m.comment = c.comment;
+    m.comment = c.comment || '';
   } catch (e) {
     m.comment = '';
   }

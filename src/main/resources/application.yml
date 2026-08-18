@@ -31,9 +31,10 @@ mildang:
   ai:
     base-url: ${AI_BASE_URL:http://localhost:8000}
     fake: ${AI_FAKE:false}
-    # AI가 멈추면 요청 스레드 + DB 커넥션을 붙잡는다 — 반드시 상한을 둔다 (스캔이 20초대라 read는 여유 있게)
+    # AI가 멈추면 요청 스레드 + DB 커넥션을 붙잡는다 — 반드시 상한을 둔다.
+    # 스캔 실측이 21.5초라 30초는 여유가 4분의 1뿐이다. 실 AI가 붐비면 그대로 503이 되므로 45초로 둔다.
     connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
-    read-timeout: ${AI_READ_TIMEOUT:30s}
+    read-timeout: ${AI_READ_TIMEOUT:45s}
   toss:
     # 결제창용 — 브라우저에 노출돼도 되는 값
     client-key: ${TOSS_CLIENT_KEY:}
