@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-18 (6) | 카카오 웹 로그인 **실계정 확인 완료**. ⚠ 배포 시 `KAKAO_CLIENT_SECRET` 필수 — 새 콘솔은 REST API 키에 클라이언트 시크릿이 **기본 활성화**돼 있어 없으면 토큰 교환이 401로 막힌다 |
 | 2026-08-18 (5) | **밀당 대화 횟수 제한 구현** — 결제 화면의 「AI 밀당 대화 40회」. **대화 1번 = 1회**(같은 항목 재흥정은 안 셈), 1주 20·2주 40·4주 무제한. 소진 시 `POST /haggles` → **409 `HAGGLE_QUOTA_EXCEEDED`**. `current.haggleQuota{limit,used,remaining,unlimited}` 신설 |
 | 2026-08-18 (4) | 리포트 「내 몸의 변화」 첫 칸을 **칼로리 → 체중 변화**로 (팀 결정). 챌린지 첫 기록과 마지막 기록을 비교해 「58kg → 54kg」·「4.0kg 줄었어요」 |
 | 2026-08-18 (3) | **카카오 웹 로그인 신설** — `GET /auth/kakao/authorize-url?redirectUri=` (인가 화면 주소), `POST /auth/kakao` {code, redirectUri, deviceId} (인가 코드 → 서버가 토큰 교환 → id_token 검증 → 우리 토큰). 검증기는 **프로필이 아니라 앱 키 유무**로 갈린다 |

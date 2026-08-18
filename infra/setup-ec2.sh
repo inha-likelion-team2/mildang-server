@@ -13,7 +13,10 @@ DB_PASSWORD="여기에-DB-비밀번호"       # 아무 랜덤 문자열
 JWT_SECRET="여기에-32바이트-이상-시크릿" # 32자 이상 랜덤 문자열
 OPENAI_API_KEY="여기에-키"            # AI팀에게 받기 (AI 서버용)
 OPENAI_MODEL="여기에-모델명"           # AI팀이 쓰는 모델
-KAKAO_APP_KEY=""                     # 카카오 앱의 REST API 키. prod 프로필로 올릴 때만 필요
+KAKAO_APP_KEY=""                     # 카카오 REST API 키 (id_token의 aud 대조용)
+KAKAO_REST_API_KEY=""                # 같은 값 — 인가 코드를 토큰으로 바꿀 때 client_id
+KAKAO_CLIENT_SECRET=""               # ⚠ 새 콘솔은 기본 활성화다. 없으면 토큰 교환이 401
+                                     # 위치: 앱 → 플랫폼 키 → REST API 키 → 클라이언트 시크릿
                                      # (아래 서비스는 demo 프로필이라 카카오 검증을 하지 않는다)
 # ------------------------------------
 
@@ -98,6 +101,8 @@ Environment=PUBLIC_BASE_URL=https://${DOMAIN}
 # ⚠ 지금은 demo 프로필이라 idToken을 검증하지 않는다(아무 문자열이나 계정이 된다).
 #    실서비스로 올릴 땐 SPRING_PROFILES_ACTIVE=prod 로 바꾸고 아래를 함께 켤 것.
 # Environment=KAKAO_APP_KEY=${KAKAO_APP_KEY}
+# Environment=KAKAO_REST_API_KEY=${KAKAO_REST_API_KEY}
+# Environment=KAKAO_CLIENT_SECRET=${KAKAO_CLIENT_SECRET}
 ExecStart=/usr/bin/java -Xmx350m -jar /opt/mildang/mildang-server.jar
 Restart=always
 RestartSec=5
