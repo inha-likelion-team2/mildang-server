@@ -8,6 +8,7 @@
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-18 (7) | W4 `subtitle`을 **「밀당 대화 무제한 · 가장 긴 한 판」**으로 — 옛 문구는 폐지된 주차별 예산을 가리켜 사실과 달랐다 (Q6 종결) |
 | 2026-08-18 (6) | 카카오 웹 로그인 **실계정 확인 완료**. ⚠ 배포 시 `KAKAO_CLIENT_SECRET` 필수 — 새 콘솔은 REST API 키에 클라이언트 시크릿이 **기본 활성화**돼 있어 없으면 토큰 교환이 401로 막힌다 |
 | 2026-08-18 (5) | **밀당 대화 횟수 제한 구현** — 결제 화면의 「AI 밀당 대화 40회」. **대화 1번 = 1회**(같은 항목 재흥정은 안 셈), 1주 20·2주 40·4주 무제한. 소진 시 `POST /haggles` → **409 `HAGGLE_QUOTA_EXCEEDED`**. `current.haggleQuota{limit,used,remaining,unlimited}` 신설 |
 | 2026-08-18 (4) | 리포트 「내 몸의 변화」 첫 칸을 **칼로리 → 체중 변화**로 (팀 결정). 챌린지 첫 기록과 마지막 기록을 비교해 「58kg → 54kg」·「4.0kg 줄었어요」 |
@@ -206,7 +207,7 @@
       "priceKrw": 0, "recommended": true, "available": true, "unavailableReason": null },
     { "period": "W2", "title": "단기", "subtitle": "리포트가 뚜렷해지는 최소 기간",
       "priceKrw": 2000, "recommended": false, "available": true, "unavailableReason": null },
-    { "period": "W4", "title": "장기", "subtitle": "주차별로 예산을 나눠 드려요",
+    { "period": "W4", "title": "장기", "subtitle": "밀당 대화 무제한 · 가장 긴 한 판",
       "priceKrw": 3500, "recommended": false, "available": true, "unavailableReason": null }
   ],
   "notice": "결제는 프리미엄이 아니라, 진짜 할 건지 확인하는 문턱이에요."
@@ -214,7 +215,7 @@
 ```
 
 - ⚠ `title`은 **"1주"가 아니라 "맛보기"·"단기"·"장기"** 입니다(확정 와이어프레임 85:804 문구). 기간 표기(1주/2주/4주)가 필요하면 `period`로 프론트에서 매핑하세요.
-- ⚠ W4의 `subtitle`이 "주차별로 예산을 나눠 드려요"인데 **v1.3에서 주차별 예산은 폐지**됐습니다(총액 단일). 문구 수정이 필요합니다 — 기획 확인 대기.
+- W4의 `subtitle`은 **「밀당 대화 무제한 · 가장 긴 한 판」**입니다. 예전 문구(「주차별로 예산을 나눠 드려요」)는 v1.3에서 폐지된 주차별 예산을 가리켜 사실과 달랐습니다 (2026-08-18 교체). ⚠ **피그마 85:804에는 옛 문구가 남아 있습니다** — 디자인 쪽 수정이 필요합니다.
 - 무료 1주를 이미 쓴 계정은 `W1`이 `available: false` + `unavailableReason: "무료 체험을 이미 쓰셨어요"`.
 - `recommended`는 W1에만 `true`입니다.
 - **데모에서는 무료 소진이 무시됩니다**(심사위원 무제한 재시작).

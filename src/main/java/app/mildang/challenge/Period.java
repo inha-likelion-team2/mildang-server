@@ -3,7 +3,7 @@ package app.mildang.challenge;
 public enum Period {
     W1(7, 1, "1주", "맛보기", "최초 1회 무료 · 처음이라면 추천", 0, 20),
     W2(14, 2, "2주", "단기", "리포트가 뚜렷해지는 최소 기간", 2000, 40),
-    W4(28, 4, "4주", "장기", "주차별로 예산을 나눠 드려요", 3500, 0);
+    W4(28, 4, "4주", "장기", "밀당 대화 무제한 · 가장 긴 한 판", 3500, 0);
 
     private final int totalDays;
     private final int weeks;
