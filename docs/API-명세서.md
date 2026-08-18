@@ -14,7 +14,7 @@
 https://mildang-server-production.up.railway.app/v1
 ```
 
-CORS는 전 오리진 열려 있어서 Vercel 프리뷰 주소가 배포마다 바뀌어도 그대로 됩니다.
+CORS는 전 오리진 열려 있어서 Vercel 프리뷰 주소가 배포마다 바뀌어도 그대로 됩니다. `localhost:5173`·`127.0.0.1:5173`도 포함이고 `Authorization` 헤더도 허용돼 있으니, **오리진을 따로 등록해 달라고 요청하실 필요가 없습니다.**
 
 ```
 NEXT_PUBLIC_API_BASE=https://mildang-server-production.up.railway.app/v1
@@ -73,6 +73,8 @@ await api("/demo/seed", { method: "POST", body: JSON.stringify({ scenario: "DAY4
 
 **첫 화면 하나 그려보기**
 
+> 갓 만든 계정은 진행 중인 챌린지가 없어서 `/challenges/current`가 **404**입니다. 버그가 아니라 «온보딩으로 보내라»는 신호입니다. 바로 화면을 보고 싶으면 위의 `/demo/seed`를 먼저 부르세요.
+
 ```ts
 const d = await api("/challenges/current");
 d.budget.balance;        // 52
@@ -94,6 +96,7 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-18 (12) | **CORS preflight(OPTIONS)를 인증에서 제외.** 브라우저는 preflight에 `Authorization`을 싣지 않으므로 토큰을 요구하면 다른 오리진의 FE가 보호된 경로를 아예 못 부른다. 이전에는 500이 나갔다(preflight의 handler가 컨트롤러가 아니라 `PreFlightHandler`라 전역 예외 핸들러가 못 잡음). **본 요청의 인증은 그대로** |
 | 2026-08-18 (11) | DB 테이블 **명명 규칙 확정** — 문서를 코드에 맞춘다(단수형이 정본). AI·프론트에는 영향 없음(테이블명이 API·AI 계약에 새지 않음). 대응표는 `docs/DB-변경-v3.1.md` §0 |
 | 2026-08-18 (10) | 데모 `POST /demo/advance-day`가 **체중도 함께 이동**시킨다 — 안 옮기면 챌린지만 과거로 가고 체중은 제자리라 진행률 카드의 일차별 체중이 어긋났다 |
 | 2026-08-18 (9) | `GET /checkins/today`에 **`lastWeightKg`** 추가 — 오늘 아직 안 쟀을 때 체중 스테퍼가 출발할 값(가장 최근 기록). ⚠ 이 값을 그대로 저장하면 «어제 체중이 오늘 기록»이 되므로, 사용자가 실제로 조작했을 때만 `weightKg`를 보낼 것 |
