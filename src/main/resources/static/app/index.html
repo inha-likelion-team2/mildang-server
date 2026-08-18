@@ -660,7 +660,7 @@ const CONF = { CERTAIN: '확실', HIGH: '높음', MEDIUM: '보통' };
 let token = null, refreshToken = null, challengeId = null, reportChallengeId = null,
     challenge = null, budget = null;
 let currentPeriod = null, currentPrice = 0, planData = null, selectedPlan = null;
-let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3', portion: 'NORMAL', situation: 'MEAL' };
+let surveyPick = { noodle: '2-3', bread: '0-1', snack: '2-3', amount: 'NORMAL', situation: 'MEAL' };
 let selectedPromiseDate = null, sheetCtx = null, scanId = null, scanData = null;
 let haggleId = null, haggleTarget = null, haggleBack = 'meal', haggleAgreed = null;
 let nextChallengeRec = null, reportData = null;
@@ -991,8 +991,8 @@ function initSurvey() {
 
   const portion = `<div>
       <div style="font-size:14px;font-weight:800">한 번 먹을 때 양은 어느 정도인가요?</div>
-      <div class="seg3" style="margin-top:10px" id="sv-portion">` +
-    PORTION_OPTS.map(([k, l]) => `<button class="${surveyPick.portion === k ? 'on' : ''}" onclick="pickSurvey('portion','${k}')">${l}</button>`).join('') +
+      <div class="seg3" style="margin-top:10px" id="sv-amount">` +
+    PORTION_OPTS.map(([k, l]) => `<button class="${surveyPick.amount === k ? 'on' : ''}" onclick="pickSurvey('amount','${k}')">${l}</button>`).join('') +
     `</div></div>`;
 
   // 상황은 예산에 영향이 없다 — AI가 나중에 쓰라고 값만 남긴다 (2026-08-17 결정)
@@ -1032,7 +1032,7 @@ async function submitBudget() {
   await confirmBudget(null, Number($('b-slider').value));
 }
 async function confirmBudget(key, weekly) {
-  const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: surveyPick, optionKey: key, budget: weekly, weightKg: startWeight() });
+  const r = await call('POST', `/challenges/${challengeId}/budget`, { survey: { ...surveyPick, weightKg: startWeight() }, optionKey: key, budget: weekly });
   nav('dash');
   if (r.startTip) toast(r.startTip.text);
 }

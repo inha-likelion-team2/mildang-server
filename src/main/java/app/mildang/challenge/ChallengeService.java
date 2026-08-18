@@ -185,7 +185,8 @@ public class ChallengeService {
             throw new ApiException(ErrorCode.BUDGET_ALREADY_SET);
         }
         BudgetPolicy.Result result = BudgetPolicy.estimate(
-                survey.noodle(), survey.bread(), survey.snack(), survey.portion(), challenge.getPeriod());
+                survey.noodle(), survey.bread(), survey.snack(), survey.amount(), survey.weightKg(),
+                challenge.getPeriod());
         return new EstimateResponse(result.estimatedWeekly(), result.recommended(), result.cutRatePercent(),
                 result.rationale(), ANCHORS, result.options(), result.totalBudget(), result.slider());
     }
@@ -198,7 +199,8 @@ public class ChallengeService {
         }
         Survey survey = resolveSurvey(userId, challenge, request.survey());
         BudgetPolicy.Result estimate = BudgetPolicy.estimate(
-                survey.noodle(), survey.bread(), survey.snack(), survey.portion(), challenge.getPeriod());
+                survey.noodle(), survey.bread(), survey.snack(), survey.amount(), survey.weightKg(),
+                challenge.getPeriod());
 
         // 요청 budget은 주간값. 디자인(온보딩_03)이 슬라이더로 바뀌면서 «제안값 3개 중 하나»가 아니라
         // 범위 안의 아무 값이나 받는다. optionKey는 보내면 기록하고, 없으면 값에서 가장 가까운 걸 추정한다.
@@ -215,8 +217,9 @@ public class ChallengeService {
         challenge.setSurveyNoodle(survey.noodle());
         challenge.setSurveyBread(survey.bread());
         challenge.setSurveySnack(survey.snack());
-        challenge.setSurveyPortion(survey.portion());
+        challenge.setSurveyPortion(survey.amount());
         challenge.setSurveySituation(survey.situation());
+        challenge.setSurveyWeightKg(survey.weightKg());
         challenge.setOptionKey(optionKey);
         challenge.setBudgetWeekly(request.budget());
         challenge.setBudget(totalBudget);
@@ -235,9 +238,11 @@ public class ChallengeService {
             userRepository.findById(userId).ifPresent(u -> u.setFreeTrialUsed(true));
         }
 
-        // 설문에서 받은 시작 체중 — 챌린지가 ACTIVE가 된 뒤에 남긴다(온보딩 중엔 기록할 자리가 없다)
-        if (request.weightKg() != null) {
-            weightService.putToday(userId, request.weightKg());
+        // 설문에서 받은 시작 체중 — 챌린지가 ACTIVE가 된 뒤에 남긴다(온보딩 중엔 기록할 자리가 없다).
+        // survey.weightKg가 정본이고 최상위 weightKg는 예전 자리 — 둘 다 받되 survey 쪽을 우선한다.
+        java.math.BigDecimal startWeight = survey.weightKg() != null ? survey.weightKg() : request.weightKg();
+        if (startWeight != null) {
+            weightService.putToday(userId, startWeight);
         }
 
         return new ConfirmResponse(challenge.getId(), challenge.getStatus(), challenge.getPeriod(),
@@ -297,9 +302,9 @@ public class ChallengeService {
         Challenge previous = challengeRepository
                 .findFirstByUserIdAndSurveyNoodleNotNullOrderByCreatedAtDesc(userId)
                 .orElseThrow(() -> new ApiException(ErrorCode.VALIDATION_FAILED, "설문이 필요해요.", "survey", null));
-        // 재사용할 때도 양·상황을 함께 가져온다 — 안 그러면 재대결에서 예산이 달라진다
+        // 재사용할 때도 양·상황·체중을 함께 가져온다 — 안 그러면 재대결에서 예산이 달라진다
         return new Survey(previous.getSurveyNoodle(), previous.getSurveyBread(), previous.getSurveySnack(),
-                previous.getSurveyPortion(), previous.getSurveySituation());
+                previous.getSurveyPortion(), previous.getSurveySituation(), previous.getSurveyWeightKg());
     }
 
     @Transactional

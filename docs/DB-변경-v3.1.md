@@ -11,7 +11,7 @@
 | 구분 | 내용 |
 | --- | --- |
 | **추가 테이블** | `weight_log` — 체중 기록 (1건) |
-| **추가 컬럼** | `challenge.survey_portion` · `challenge.survey_situation` · `scan_menu.comment` · `haggle_session.challenge_id` |
+| **추가 컬럼** | `challenge.survey_portion` · `challenge.survey_situation` · **`challenge.survey_weight_kg`** · `scan_menu.comment` · `haggle_session.challenge_id` |
 | **추가 열거형** | `Portion`(`SMALL` `NORMAL` `LARGE`) · `Situation`(`MEAL` `SNACK` `LATE_NIGHT` `IRREGULAR`) |
 | **열거값 변경** | `PayProvider` — `IAP_APPLE` `IAP_GOOGLE` **삭제**, **`TOSS` 추가** (웹앱이라 IAP가 아니라 PG) |
 | **에러 코드 추가** | `HAGGLE_QUOTA_EXCEEDED`(409) · `PAYMENT_FAILED`(400) · `PAYMENT_AMOUNT_MISMATCH`(400) |
@@ -106,27 +106,33 @@ CREATE TABLE weight_log (
 
 ## 2. 컬럼 추가
 
-### 2.1 `challenge` — 설문 2문항 (온보딩_03)
+### 2.1 `challenge` — 설문 3문항 (온보딩_03)
 
-v3.0의 설문은 빈도 3문항(`survey_noodle` `survey_bread` `survey_snack`)뿐이었는데, 확정 와이어프레임(141:1157)에 **양**과 **상황**이 추가됐습니다.
+v3.0의 설문은 빈도 3문항(`survey_noodle` `survey_bread` `survey_snack`)뿐이었는데, 확정 와이어프레임(141:1157)에 **양**·**상황**이 추가됐고 2026-08-19에 **체중**이 더해졌습니다.
 
 | 컬럼 | 타입 | 제약 | 설명 |
 | --- | --- | --- | --- |
 | `survey_portion` | varchar(8) | CHECK `IN ('SMALL','NORMAL','LARGE')` | 한 번 먹는 양. **예산에 0.7 / 1.0 / 1.3배** |
 | `survey_situation` | varchar(16) | CHECK `IN ('MEAL','SNACK','LATE_NIGHT','IRREGULAR')` | 가장 많이 먹는 상황. **예산에 영향 없음** |
+| `survey_weight_kg` | numeric(5,2) | CHECK `20 ~ 300` | 설문에서 받은 체중. **예산에 60kg 기준 ±15% 보정** |
 
 ```sql
 ALTER TABLE challenge ADD COLUMN survey_portion   varchar(8);
 ALTER TABLE challenge ADD COLUMN survey_situation varchar(16);
+ALTER TABLE challenge ADD COLUMN survey_weight_kg numeric(5,2);
 ALTER TABLE challenge ADD CONSTRAINT ck_survey_portion
     CHECK (survey_portion IS NULL OR survey_portion IN ('SMALL','NORMAL','LARGE'));
 ALTER TABLE challenge ADD CONSTRAINT ck_survey_situation
     CHECK (survey_situation IS NULL OR survey_situation IN ('MEAL','SNACK','LATE_NIGHT','IRREGULAR'));
+ALTER TABLE challenge ADD CONSTRAINT ck_survey_weight_kg
+    CHECK (survey_weight_kg IS NULL OR survey_weight_kg BETWEEN 20 AND 300);
 ```
 
-- 둘 다 **nullable**입니다 — 설문에서 건너뛸 수 있습니다.
-- **`survey_situation`은 예산 산식에 들어가지 않습니다** (팀 결정 2026-08-17, 전 값 가중치 1.0). 리포트의 AI 분석이 나중에 쓰라고 **값만 남깁니다.** 저장하면서 쓰지 않는 유일한 컬럼이라 의도를 명시해 둡니다.
-- `estimated_weekly` 산식이 바뀌었습니다: `round5(빈도 기반 추정 × portion 배수)`.
+- 셋 다 **nullable**입니다 — 설문에서 건너뛸 수 있습니다.
+- ⚠ **컬럼 이름은 `survey_portion` 그대로인데 API 필드는 `amount`입니다.** 2026-08-19에 API만 개명했습니다(FE 계약이 `amount`). 이름을 맞추려고 컬럼까지 바꾸면 이미 들어간 데이터를 옮겨야 해서, 마감 전에는 손대지 않습니다.
+- **`survey_situation`은 예산 산식에 들어가지 않습니다** (팀 결정 2026-08-17, 2026-08-19 유지 재확인). 리포트의 AI 분석이 나중에 쓰라고 **값만 남깁니다.** 저장하면서 쓰지 않는 유일한 컬럼이라 의도를 명시해 둡니다.
+- **`survey_weight_kg`는 `weight_log`와 별개입니다.** 체중 로그는 «1일차에 몇 kg이었나»를 남기고, 이 컬럼은 «예산을 계산할 때 쓴 값»을 남깁니다. 설문을 다시 안 받고 새 챌린지를 시작할 때 이게 없으면 곱수가 1.0으로 돌아가 **같은 설문인데 예산이 달라집니다.**
+- `estimated_weekly` 산식: `round5(빈도 기반 추정 × amount 배수 × 체중 곱수)`. 체중 곱수 = `clamp(1 + (kg − 60)/60 × 0.3, 0.85, 1.15)`.
 
 ### 2.2 `scan_menu` — 메뉴별 코멘트 (화면 4b)
 

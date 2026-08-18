@@ -28,14 +28,34 @@ public class ChallengeDtos {
     // ---- 설문 ----
     /**
      * 화면 «온보딩_03» 설문. noodle·bread·snack은 1번 문항(주당 빈도),
-     * portion은 2번(한 번 먹을 때 양), situation은 3번(가장 많이 먹는 상황).
-     * 뒤 둘은 선택 — 안 보내면 portion=NORMAL로 보고, situation은 비워둔다.
+     * amount는 2번(한 번 먹을 때 양), situation은 3번(가장 많이 먹는 상황),
+     * weightKg는 4번(체중). 1번을 뺀 나머지는 선택 — 안 보내면 amount=NORMAL로 본다.
+     *
+     * <p>2번 문항의 이름은 <b>amount</b>다(FE 계약·화면 문구에 맞춘 이름). 예전 이름
+     * {@code portion}도 계속 받는다 — 데모 프론트와 이미 붙인 클라이언트가 쓰고 있다.
+     *
+     * <p>⚠ 이름이 어긋나면 값이 «조용히» 버려진다. FE가 {@code amount}를 보내는데 서버가
+     * {@code portion}만 읽던 동안, 많이 먹는 사람도 전부 NORMAL(×1.0)로 계산돼 예산이
+     * 똑같이 나왔다. 400도 안 나므로 알아채기 어렵다.
+     *
+     * <p>{@code weightKg}는 시작 체중으로 1일차에 남는다. confirm은 최상위 {@code weightKg}도
+     * 계속 받는다 — 둘 다 오면 survey 쪽을 쓴다.
      */
     public record Survey(@NotNull SurveyLevel noodle, @NotNull SurveyLevel bread, @NotNull SurveyLevel snack,
-                         Portion portion, Situation situation) {
+                         @com.fasterxml.jackson.annotation.JsonAlias("portion") Portion amount,
+                         Situation situation,
+                         @jakarta.validation.constraints.DecimalMin("20.0")
+                         @jakarta.validation.constraints.DecimalMax("300.0")
+                         java.math.BigDecimal weightKg) {
 
         public Survey {
-            portion = portion != null ? portion : Portion.NORMAL;
+            amount = amount != null ? amount : Portion.NORMAL;
+        }
+
+        /** 체중 없이 쓰던 자리(설문 재사용·테스트)를 그대로 두기 위한 생성자 */
+        public Survey(SurveyLevel noodle, SurveyLevel bread, SurveyLevel snack,
+                      Portion amount, Situation situation) {
+            this(noodle, bread, snack, amount, situation, null);
         }
     }
 

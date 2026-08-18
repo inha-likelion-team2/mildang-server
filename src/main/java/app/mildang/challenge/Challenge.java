@@ -75,6 +75,15 @@ public class Challenge {
     @Enumerated(EnumType.STRING)
     private Situation surveySituation;
 
+    /**
+     * 설문에서 받은 체중 — 예산 추정에 곱한다(60kg 기준 ±15%).
+     *
+     * <p>체중 로그(1일차 기록)와 별개로 여기에도 남긴다. 설문을 다시 안 받고 새 챌린지를
+     * 시작할 때 이 값이 없으면 곱수가 1.0으로 돌아가 «같은 설문인데 예산이 달라지는» 일이 난다.
+     */
+    @Column(precision = 5, scale = 2)
+    private java.math.BigDecimal surveyWeightKg;
+
     @Enumerated(EnumType.STRING)
     private OptionKey optionKey;
 

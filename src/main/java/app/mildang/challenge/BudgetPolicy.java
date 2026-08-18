@@ -56,14 +56,47 @@ public final class BudgetPolicy {
         return estimate(noodle, bread, snack, Portion.NORMAL, period);
     }
 
+    /** 체중 보정의 기준점 — 이 몸무게에서 곱수가 정확히 1.0이다 */
+    private static final double WEIGHT_BASE_KG = 60.0;
+
+    /** 기준 대비 편차에 곱하는 계수. 0.3이면 90kg에서 +15%가 되어 한계와 맞아떨어진다 */
+    private static final double WEIGHT_SLOPE = 0.3;
+
+    private static final double WEIGHT_MIN = 0.85;
+    private static final double WEIGHT_MAX = 1.15;
+
+    public static Result estimate(SurveyLevel noodle, SurveyLevel bread, SurveyLevel snack,
+                                  Portion amount, Period period) {
+        return estimate(noodle, bread, snack, amount, null, period);
+    }
+
     /**
-     * 한 번 먹는 양(portion)을 곱한다 — 같은 횟수라도 양이 다르면 예산이 달라야 한다.
-     * 먹는 «상황»(Situation)은 예산에 반영하지 않는다 (전부 1.0, 팀 결정 2026-08-17).
+     * 체중 보정 곱수 — 60kg에서 1.0, ±15%에서 멈춘다.
+     *
+     * <p>몸이 크면 같은 «1인분»도 실제 양이 크다는 것 이상은 주장하지 않는다. 그래서 기울기를
+     * 얕게 두고 한계를 박았다 — 보정이 설문 자체(면·빵·간식 빈도)를 뒤집으면 안 된다.
+     * 체중을 안 보내면 1.0이라 기존 결과가 그대로 나온다.
+     */
+    public static double weightMultiplier(java.math.BigDecimal weightKg) {
+        if (weightKg == null) {
+            return 1.0;
+        }
+        double m = 1 + (weightKg.doubleValue() - WEIGHT_BASE_KG) / WEIGHT_BASE_KG * WEIGHT_SLOPE;
+        return Math.clamp(m, WEIGHT_MIN, WEIGHT_MAX);
+    }
+
+    /**
+     * 한 번 먹는 양(amount)과 체중을 곱한다 — 같은 횟수라도 양이 다르면 예산이 달라야 하고,
+     * 몸이 크면 같은 «1인분»도 실제 양이 크다.
+     *
+     * <p>먹는 «상황»(Situation)은 예산에 반영하지 않는다 (전부 1.0, 팀 결정 2026-08-17에서
+     * 유지 재확인 2026-08-19). 저장은 하되 산식에는 안 들어간다 — 시작 팁 문구 쪽에서 쓴다.
      */
     public static Result estimate(SurveyLevel noodle, SurveyLevel bread, SurveyLevel snack,
-                                  Portion portion, Period period) {
+                                  Portion amount, java.math.BigDecimal weightKg, Period period) {
         int base = NOODLE[noodle.ordinal()] + BREAD[bread.ordinal()] + SNACK[snack.ordinal()];
-        int weekly = round5(base * (portion != null ? portion : Portion.NORMAL).multiplier());
+        double weightM = weightMultiplier(weightKg);
+        int weekly = round5(base * (amount != null ? amount : Portion.NORMAL).multiplier() * weightM);
         int multiplier = period.weeks();
 
         List<Option> options = List.of(
@@ -74,7 +107,10 @@ public final class BudgetPolicy {
         int recommended = options.get(1).budget();
         int totalBudget = options.get(1).totalBudget();
 
-        String rationale = "평소 주 " + weekly + " 정도로 추정, 여기서 15%만 줄인 값이에요."
+        // 톤 규칙: 추정치에는 근거 한 줄이 붙는다. 체중을 받았을 때만 그 사실을 밝힌다 —
+        // 안 밝히면 «왜 나만 예산이 다르지»가 되고, 늘 밝히면 안 보낸 사람에게 거짓말이 된다.
+        String weightNote = weightM == 1.0 ? "" : " 체중까지 감안했어요.";
+        String rationale = "평소 주 " + weekly + " 정도로 추정, 여기서 15%만 줄인 값이에요." + weightNote
                 + (multiplier > 1 ? " " + period.label() + "면 총 " + totalBudget + "입니다." : "");
 
         return new Result(weekly, recommended, cutRateOf(OptionKey.AS_IS), rationale, options, totalBudget,
