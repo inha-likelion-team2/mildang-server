@@ -1121,3 +1121,20 @@
 - [ ] 429 재시도 로직 불필요 (레이트 리밋 미구현)
 - [ ] **메뉴 탭은 두 단계로 그리기** — 이름·가격·`balanceAfter`는 이미 `menus[]`에 있으니 즉시 그리고, `comment`(AI 호출, 수 초)만 나중에 채우세요
 - [ ] **입력 → 항목 생성 흐름에 중복 제출 가드** — 한글 IME는 조합 중 Enter에서 `keydown`이 두 번 뜹니다. `e.nativeEvent.isComposing` 확인 + 진행 중 플래그. (서버가 3초 창으로 병합해주지만 안전망일 뿐입니다)
+
+### 2026-08-18 추가분 (확정 와이어프레임 반영)
+
+> **기존 필드는 하나도 지우거나 이름을 바꾸지 않았습니다.** 전부 «추가»라, 이미 만든 화면은 그대로 돕니다.
+
+- [ ] **화면 문구는 서버 값을 그대로 쓰기** — `plans[].title/subtitle`, `checkins.questions[].label/desc`가 확정 시안 문구로 바뀌었습니다. 하드코딩해 두면 옛 문구가 남습니다
+- [ ] **체크인 선택지 라벨은 「좋음 / 보통 / 나쁨」** — 값은 그대로 `GOOD`·`MID`·`BAD`입니다
+- [ ] **체중 스테퍼는 `lastWeightKg`에서 출발** — `weightKg`(오늘 값)가 `null`이면 `lastWeightKg`로 시작하되, **사용자가 실제로 조작했을 때만** `weightKg`를 보내세요. 안 그러면 어제 체중이 오늘 기록이 됩니다
+- [ ] **약속은 날짜로 보내기** — `promiseDate`(`2026-08-20`). 요일은 서버가 뽑습니다. 기존 `weekday`도 계속 받지만 화면은 날짜를 고릅니다
+- [ ] **진행률 체크박스는 `!progress.days[].future`** 로 칠하기 (날짜 기준). `checkin`·`recorded`·`weighed`는 참고용입니다
+- [ ] **「오늘의 알림」은 `todayNotice`** (= 오늘 잡힌 약속). 밀당이 말풍선의 AI 팁(`tip`)과 **다른 자리**입니다
+- [ ] **밀당 대화 횟수** — `haggleQuota.remaining`을 미리 보여주고, 소진 시 `POST /haggles`가 **409 `HAGGLE_QUOTA_EXCEEDED`**로 막힙니다. 그때도 기록·선차감은 됩니다
+- [ ] **기록 보기는 캘린더 → 목록** — `GET /items/dates?month=`로 점 찍을 날을 받고, 고른 날짜로 `GET /items?date=`. 목록 정렬은 **최신 입력순**입니다
+- [ ] **완주 리포트는 `completion` 하나로** 그려집니다 — 문구까지 서버가 만들어 보냅니다
+- [ ] **결제는 두 단계** — `GET /payments/config`로 클라이언트 키를 받고(없으면 `configured:false` → 데모 결제), 결제창 통과 후 `POST /payments/confirm`. ⚠ **금액은 서버가 다시 계산해 대조**하므로 `amount`를 임의로 바꾸면 400입니다
+- [ ] **카카오 로그인** — `GET /auth/kakao/authorize-url?redirectUri=`로 인가 주소를 받아 이동하고, 돌아온 `?code=`를 `POST /auth/kakao`로 넘기세요. 앱 키를 프론트에 박지 마세요
+- [ ] 필수 파라미터 누락이 이제 **400**입니다(예전엔 500). `error.field`로 어느 값인지 옵니다
