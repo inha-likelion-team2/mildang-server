@@ -114,6 +114,42 @@ class CompletedDashboardTest {
     }
 
     @Test
+    @DisplayName("advance-day가 완주를 그 자리에서 알려주고, 완주 후에도 계속 넘길 수 있다")
+    void advanceDayReportsCompletionAndKeepsWorking() throws Exception {
+        String t = token();
+        mvc.perform(post("/demo/seed").header("Authorization", "Bearer " + t)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"scenario\":\"DAY4_ACTIVE\"}"))
+                .andExpect(status().isOk());
+
+        // 4일차 → 7일차(마지막 날)까지는 계속 ACTIVE
+        for (int expected = 5; expected <= 7; expected++) {
+            JsonNode adv = advanceAndRead(t);
+            assertThat(adv.get("dayIndex").asInt()).isEqualTo(expected);
+            assertThat(adv.get("status").asString()).isEqualTo("ACTIVE");
+        }
+
+        // 마지막 날을 넘기는 순간 «그 응답에서» 완주가 드러나야 한다.
+        // 예전엔 여기서 ACTIVE가 돌아와 «안 넘어갔다»로 보였다.
+        JsonNode done = advanceAndRead(t);
+        assertThat(done.get("status").asString()).isEqualTo("COMPLETED");
+        assertThat(done.get("completed").asBoolean()).isTrue();
+        assertThat(done.get("challengeId").asString()).startsWith("chl_");
+
+        // 완주 후에도 404가 아니어야 한다 — 시연 중에 버튼이 죽으면 안 된다
+        JsonNode more = advanceAndRead(t);
+        assertThat(more.get("status").asString()).isEqualTo("COMPLETED");
+
+        reset(t);
+    }
+
+    private JsonNode advanceAndRead(String token) throws Exception {
+        String res = mvc.perform(post("/demo/advance-day").header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"days\":1}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        return om.readTree(res);
+    }
+
+    @Test
     @DisplayName("챌린지를 한 번도 안 만든 사람은 그대로 404 — 온보딩으로 가야 한다")
     void brandNewUserStill404() throws Exception {
         mvc.perform(get("/challenges/current").header("Authorization", "Bearer " + token()))

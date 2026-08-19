@@ -86,14 +86,20 @@ public class DemoController {
     public record AdvanceRequest(Integer days) {
     }
 
-    /** 하루(N일)를 앞당긴다 — 챌린지·항목·체크인의 시각을 N일 과거로 이동 (명세 §14.6) */
+    /**
+     * 하루(N일)를 앞당긴다 — 챌린지·항목·체크인의 시각을 N일 과거로 이동 (명세 §14.6).
+     *
+     * <p>⚠ COMPLETED도 대상에 넣는다. 예전엔 ONBOARDING·ACTIVE만 찾아서, 마지막 날을 넘기는 순간
+     * 그다음부터 404가 났다 — 시연 중에 「하루 넘기기」가 영영 안 먹는 상태가 된다(FE 제보 2026-08-19).
+     */
     @PostMapping("/advance-day")
     @Transactional
     public Map<String, Object> advanceDay(@CurrentUser String userId, @RequestBody(required = false) AdvanceRequest request) {
         int days = request == null || request.days() == null ? 1 : request.days();
         Challenge challenge = challengeRepository
                 .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
-                        userId, List.of(ChallengeStatus.ONBOARDING, ChallengeStatus.ACTIVE))
+                        userId, List.of(ChallengeStatus.ONBOARDING, ChallengeStatus.ACTIVE,
+                                ChallengeStatus.COMPLETED))
                 .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "진행 중인 챌린지가 없어요."));
 
         challenge.setStartedAt(challenge.getStartedAt().minus(days, ChronoUnit.DAYS));
@@ -121,9 +127,21 @@ public class DemoController {
         weightRepository.findByChallengeIdIn(List.of(challenge.getId()))
                 .forEach(w -> w.setDate(w.getDate().minusDays(days)));
 
+        // 날짜를 옮겼으면 완주 여부도 여기서 확정한다. 안 그러면 마지막 날을 넘겼는데도
+        // 「dayIndex 7 · ACTIVE」가 돌아와 «안 넘어갔다»로 보인다 — 전이는 다음 current 호출에서야
+        // 일어났다(FE 제보 2026-08-19).
+        Instant now = Instant.now();
+        if (challenge.getStatus() == ChallengeStatus.ACTIVE
+                && challenge.getEndsAt() != null && now.isAfter(challenge.getEndsAt())) {
+            challenge.setStatus(ChallengeStatus.COMPLETED);
+            challenge.setCompletedAt(now);
+        }
+
         return Map.of("mocked", true,
-                "dayIndex", challengeService.dayIndex(challenge, Instant.now()),
-                "status", challenge.getStatus().name());
+                "challengeId", challenge.getId(),
+                "dayIndex", challengeService.dayIndex(challenge, now),
+                "status", challenge.getStatus().name(),
+                "completed", challenge.getStatus() == ChallengeStatus.COMPLETED);
     }
 
     public record RunBatchRequest(@NotNull List<String> jobs) {
