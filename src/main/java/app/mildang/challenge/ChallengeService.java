@@ -309,7 +309,8 @@ public class ChallengeService {
 
     @Transactional
     public CurrentResponse current(String userId) {
-        Challenge challenge = requireActive(userId);
+        Challenge challenge = currentOrJustCompleted(userId);
+        boolean completed = challenge.getStatus() == ChallengeStatus.COMPLETED;
         Instant now = Instant.now();
 
         int dayIndex = dayIndex(challenge, now);
@@ -364,7 +365,8 @@ public class ChallengeService {
         Instant dueAt = LogicalDate.of(now).atTime(22, 0).atZone(LogicalDate.KST).toInstant();
 
         // 일 1회 생성·저장 — 없으면 즉석 1회 시도, 실패 시 null(FE 영역 숨김) (§15.5)
-        app.mildang.tip.DashboardTip storedTip = tipService.todayTip(challenge, dayIndex, diff);
+        // 끝난 챌린지에는 «오늘의 팁»이 없다. 화면이 리포트로 넘어갈 참인데 AI를 부를 이유도 없다
+        app.mildang.tip.DashboardTip storedTip = completed ? null : tipService.todayTip(challenge, dayIndex, diff);
         TipView tip = storedTip == null ? null
                 : new TipView(storedTip.getId(), storedTip.getText(), storedTip.getBasis());
 
@@ -468,6 +470,34 @@ public class ChallengeService {
      */
     public int mealsLeft(Challenge challenge, Instant now) {
         return Math.max(1, challenge.getTotalDays() - dayIndex(challenge, now));
+    }
+
+    /**
+     * 대시보드가 보는 챌린지 — 진행 중인 게 있으면 그것, 없으면 <b>가장 최근에 끝난 것</b>.
+     *
+     * <p>여기만 {@link #requireActive}와 다르게 동작한다. 기록·흥정 같은 쓰기 경로는 끝난 챌린지에
+     * 손대면 안 되므로 그쪽은 그대로 404다. 하지만 화면은 «끝났다»는 사실을 알아야 리포트로 넘어간다.
+     *
+     * <p>⚠ 이게 없을 때 프론트는 «신규 유저»와 «방금 완주»를 구분할 수 없었다. 둘 다 같은 404라서
+     * 완주한 사람도 온보딩으로 되돌아갔다(FE 제보 2026-08-19, 「6일→7일 넘어가는 기능」).
+     * 완주 후엔 리포트를 부를 challengeId조차 알 수 없었다 — 챌린지 목록 API가 없으므로.
+     */
+    @Transactional
+    public Challenge currentOrJustCompleted(String userId) {
+        Challenge active = challengeRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, List.of(ChallengeStatus.ACTIVE))
+                .orElse(null);
+        if (active != null) {
+            if (active.getEndsAt() != null && Instant.now().isAfter(active.getEndsAt())) {
+                // 기간이 지났으면 여기서 확정하고, 404 대신 «끝난 것»으로 그대로 돌려준다
+                active.setStatus(ChallengeStatus.COMPLETED);
+                active.setCompletedAt(Instant.now());
+            }
+            return active;
+        }
+        return challengeRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(userId, List.of(ChallengeStatus.COMPLETED))
+                .orElseThrow(() -> new ApiException(ErrorCode.NOT_FOUND, "진행 중인 챌린지가 없어요."));
     }
 
     /** 진행 중(ACTIVE) 챌린지 — 없으면 404. 기간이 지났으면 COMPLETED 전이 후 404. */

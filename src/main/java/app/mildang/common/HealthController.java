@@ -25,7 +25,7 @@ public class HealthController {
      * 빌드가 실패한 건지 옛 이미지가 그대로 떠 있는 건지 응답만 봐서는 구분할 수 없다.
      * 커밋마다 손으로 올린다. 정확한 시각보다 «바뀌었는지»가 중요하다.
      */
-    private static final String CODE_VERSION = "2026-08-19-survey-amount-weight";
+    private static final String CODE_VERSION = "2026-08-19-completed-dashboard";
 
     private final JdbcTemplate jdbcTemplate;
 
