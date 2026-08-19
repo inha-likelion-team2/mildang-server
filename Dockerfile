@@ -8,15 +8,22 @@
 FROM eclipse-temurin:21-jdk AS build
 WORKDIR /app
 
-# 의존성 먼저 받아 캐시에 남긴다 — 소스만 바뀌면 이 레이어를 다시 쓰지 않는다
+# 빌더 컨테이너는 메모리가 넉넉하지 않다. 상한을 안 주면 Gradle이 힙을 크게 잡았다가
+# GC로 헛돌면서 «Building the image»에서 한 시간씩 멈춘다(2026-08-19에 실제로 겪음).
+ENV GRADLE_OPTS="-Dorg.gradle.jvmargs=-Xmx1200m -Dorg.gradle.daemon=false -Dorg.gradle.parallel=false"
+
 COPY gradlew ./
 COPY gradle ./gradle
 COPY build.gradle settings.gradle ./
-RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
+RUN chmod +x gradlew
 
 COPY src ./src
-# 테스트는 CI에서 이미 돌았고, 배포 빌드에서 다시 돌리면 시간만 배로 든다
-RUN ./gradlew bootJar --no-daemon -x test
+# 테스트는 로컬·CI에서 이미 돌았고, 배포 빌드에서 다시 돌리면 시간만 배로 든다.
+#
+# 예전엔 여기 앞에 `./gradlew dependencies`로 캐시를 데우는 줄이 있었는데 뺐다.
+# 캐시가 살아 있을 때만 이득이고, Railway가 캐시를 비운 뒤에는 «전체 의존성 해석 →
+# 다시 bootJar에서 해석»으로 같은 일을 두 번 하게 만들어 오히려 느려진다.
+RUN ./gradlew bootJar --no-daemon -x test --no-build-cache
 
 # ---------- 실행 ----------
 FROM eclipse-temurin:21-jre
