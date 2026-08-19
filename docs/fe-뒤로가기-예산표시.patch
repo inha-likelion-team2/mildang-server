@@ -1,0 +1,159 @@
+diff --git a/src/App.jsx b/src/App.jsx
+index ce5ebc8..d0fe621 100644
+--- a/src/App.jsx
++++ b/src/App.jsx
+@@ -463,8 +463,8 @@ function App() {
+   else if (screen === '4b_scanResult') content = <ScanResult error={error} isLoading={Boolean(busy)} manualItems={scanManualItems} scan={scan} onBack={() => setScreen('3b_meal')} onChat={handleScanHaggle} onOpenDirectInput={() => openDirectInput('4b_scanResult')} onRecord={handleScanRecord} onRetake={() => setScreen('4a_cameraScan')} onUpdateMenu={handleScanMenuUpdate} />
+   else if (screen === '3a_presubtract') content = <PreSubtract error={error} isLoading={Boolean(busy)} item={promiseItems[0]} onBack={() => setScreen('mainBoard')} onOpenDirectInput={(options) => openDirectInput('3a_presubtract', options)} onPrepay={handlePrepay} onStartChat={(item) => startHaggle(item, 'PROMISE', '3a_presubtract')} />
+   else if (screen === '5_mildangtalk') content = <MildangTalk error={error} session={haggle?.session} onAbandon={handleHaggleAbandon} onClose={handleHaggleClose} onEnd={() => setScreen(haggle?.origin ?? 'mainBoard')} onSend={handleHaggleMessage} />
+-  else if (screen === '6_conditionCheckin') content = <ConditionCheckin checkin={checkin} error={error} isFetching={busy === 'checkin'} isLoading={busy === 'checkin-save'} onComplete={handleCheckin} />
+-  else if (screen === '7_completeReport') content = <CompleteReport error={error} isLoading={busy === 'share'} onShare={handleShare} report={report} shareCard={shareCard} />
++  else if (screen === '6_conditionCheckin') content = <ConditionCheckin checkin={checkin} error={error} isFetching={busy === 'checkin'} isLoading={busy === 'checkin-save'} onBack={() => setScreen('mainBoard')} onComplete={handleCheckin} />
++  else if (screen === '7_completeReport') content = <CompleteReport error={error} isLoading={busy === 'share'} onBack={() => setScreen('mainBoard')} onShare={handleShare} report={report} shareCard={shareCard} />
+   else if (screen === 'record_a') content = <RecordA initialDate={selectedRecordDate ?? currentRecordView?.initialDate} recordDates={currentRecordView?.recordDates} onBack={() => setScreen('mainBoard')} onNext={(date) => { setSelectedRecordDate(date); setScreen('record_b') }} />
+   else if (screen === 'record_b') content = <RecordB challenge={dashboard?.challenge ?? currentRecordView?.challenge} checkinDays={dashboard?.checkin?.checkinDays ?? currentRecordView?.checkinDays} mealRecords={getDemoMealsForDate(currentRecordView, selectedRecordDate)} selectedDate={selectedRecordDate} onBack={() => setScreen('record_a')} />
+   else content = <><MainBoard dashboard={dashboard} onMealClick={openMeal} onOpenPreSubtract={openPromise} onOpenRecords={openRecords} onConditionCheckin={openCheckin} onChallengeComplete={openReport} />{dashboard?.expiredConfirm?.[0] && <aside role="dialog" aria-modal="true" style={{ position: 'fixed', zIndex: 9998, left: 20, right: 20, bottom: 20, padding: 20, borderRadius: 20, background: '#fff', boxShadow: '0 8px 40px #0004' }}><p>{dashboard.expiredConfirm[0].question}</p><button type="button" onClick={() => handleRecord({ id: dashboard.expiredConfirm[0].id })}>드셨어요</button><button type="button" onClick={() => handleDelete({ id: dashboard.expiredConfirm[0].id })}>안 먹었어요</button></aside>}</>
+diff --git a/src/css/6_conditionCheckin.css b/src/css/6_conditionCheckin.css
+index e95289b..06faf77 100644
+--- a/src/css/6_conditionCheckin.css
++++ b/src/css/6_conditionCheckin.css
+@@ -23,10 +23,30 @@
+   height: 55px;
+ }
+ 
++.condition-checkin__back {
++  position: absolute;
++  z-index: 1;
++  top: 8px;
++  left: 12px;
++  display: grid;
++  width: 32px;
++  height: 40px;
++  padding: 0;
++  place-items: center;
++  border: 0;
++  background: transparent;
++  cursor: pointer;
++}
++
++.condition-checkin__back img {
++  width: 9px;
++  height: 16px;
++}
++
+ .condition-checkin__header img {
+   position: absolute;
+   top: 12px;
+-  left: 24px;
++  left: 52px;
+   width: 80px;
+   height: 32px;
+ }
+diff --git a/src/css/7_completeReport.css b/src/css/7_completeReport.css
+index 55e6c1a..2a21c27 100644
+--- a/src/css/7_completeReport.css
++++ b/src/css/7_completeReport.css
+@@ -13,6 +13,27 @@
+   font-family: inherit;
+ }
+ 
++/* 뒤로가기 — 결제 화면(.payment-screen__back)과 같은 자리·크기로 맞춘다 */
++.complete-report__back {
++  position: absolute;
++  z-index: 2;
++  top: calc(env(safe-area-inset-top, 0px) + 26px);
++  left: 12px;
++  display: grid;
++  width: 32px;
++  height: 40px;
++  padding: 0;
++  place-items: center;
++  border: 0;
++  background: transparent;
++  cursor: pointer;
++}
++
++.complete-report__back img {
++  width: 9px;
++  height: 16px;
++}
++
+ .complete-report__intro {
+   position: absolute;
+   top: 141px;
+diff --git a/src/screen/6_conditionCheckin.jsx b/src/screen/6_conditionCheckin.jsx
+index d4acda4..550dbba 100644
+--- a/src/screen/6_conditionCheckin.jsx
++++ b/src/screen/6_conditionCheckin.jsx
+@@ -1,4 +1,5 @@
+ import { useEffect, useState } from 'react'
++import chevronLeft from '../img/chevron-left.svg'
+ import mildangLogo from '../img/onboarding_logo_3x.png'
+ import '../css/6_conditionCheckin.css'
+ 
+@@ -14,7 +15,7 @@ const options = [
+ ]
+ 
+ 
+-function ConditionCheckin({ checkin, error, isFetching = false, isLoading = false, onComplete }) {
++function ConditionCheckin({ checkin, error, isFetching = false, isLoading = false, onBack, onComplete }) {
+   const questions = checkin?.questions?.length ? checkin.questions : defaultQuestions
+   const [answers, setAnswers] = useState(checkin?.answers ?? {})
+   const [weight, setWeight] = useState('')
+@@ -47,7 +48,14 @@ function ConditionCheckin({ checkin, error, isFetching = false, isLoading = fals
+ 
+   return (
+     <main className="condition-checkin" aria-labelledby="condition-checkin-title" aria-busy={isFetching || isLoading}>
+-      <header className="condition-checkin__header"><img src={mildangLogo} alt="밀당" /></header>
++      <header className="condition-checkin__header">
++        {onBack && (
++          <button className="condition-checkin__back" type="button" onClick={onBack} aria-label="메인으로 돌아가기">
++            <img src={chevronLeft} alt="" />
++          </button>
++        )}
++        <img src={mildangLogo} alt="밀당" />
++      </header>
+       <section className="condition-checkin__intro"><p>{checkin?.date} · {checkin?.dayIndex}일차 체크인</p><h1 id="condition-checkin-title">오늘 몸은 어땠어요?</h1><span>오늘의 기록은 리포트에 반영돼요.</span>{(localError || error) && <p role="alert">{localError || error}</p>}</section>
+       <section className="condition-checkin__form" aria-label="오늘의 컨디션">
+         {questions.map((question) => <article className="condition-card" key={question.key}><header><h2>{question.label}</h2><p>{question.desc ?? question.description}</p></header><div className="condition-card__choices" role="radiogroup" aria-label={question.label}>
+diff --git a/src/screen/7_completeReport.jsx b/src/screen/7_completeReport.jsx
+index 55eacda..4aa705b 100644
+--- a/src/screen/7_completeReport.jsx
++++ b/src/screen/7_completeReport.jsx
+@@ -1,3 +1,4 @@
++import chevronLeft from '../img/chevron-left.svg'
+ import accentCircle from '../img/complete-report-accent-circle.svg'
+ import gridHorizontal from '../img/complete-report-grid-horizontal.svg'
+ import gridVertical from '../img/complete-report-grid-vertical.svg'
+@@ -30,9 +31,14 @@ function MetricIcon({ type }) {
+   )
+ }
+ 
+-function CompleteReport({ error, isLoading = false, onShare, report, shareCard }) {
++function CompleteReport({ error, isLoading = false, onBack, onShare, report, shareCard }) {
+   return (
+     <main className="complete-report" data-screen-name="7_completeReport" aria-labelledby="complete-report-title">
++      {onBack && (
++        <button className="complete-report__back" type="button" onClick={onBack} aria-label="메인으로 돌아가기">
++          <img src={chevronLeft} alt="" />
++        </button>
++      )}
+       <header className="complete-report__intro"><h1 id="complete-report-title">당신의 결과를 공유해보세요</h1><p>2주간의 변화를 한 장에 담았어요</p>{error && <p role="alert">{error}</p>}</header>
+       <section className="report-card" aria-labelledby="report-card-title">
+         <div className="report-card__motif" aria-hidden="true"><span className="report-card__motif-dish" /><span className="report-card__motif-base" /><img src={accentCircle} alt="" /></div>
+diff --git a/src/screen/Budget.jsx b/src/screen/Budget.jsx
+index 62ffb9d..2e3d85f 100644
+--- a/src/screen/Budget.jsx
++++ b/src/screen/Budget.jsx
+@@ -26,7 +26,10 @@ function Budget({ error, estimate, isLoading = false, onContinue }) {
+   const lastIndex = Math.max(0, options.length - 1)
+   const safeIndex = Math.min(selectedIndex, lastIndex)
+   const selected = options[safeIndex]
+-  const budgetValue = Number(selected?.totalBudget ?? selected?.budget ?? 0)
++  // 서버에 보내는 값은 «주간값»(selected.budget)이다. totalBudget(기간 총액)을 보여주면
++  // 4주에서 주 500이 「2000밀」로 뜨는데, 정작 서버로는 500이 간다 — 화면과 요청이 서로
++  // 다른 값을 가리키게 된다(제보 2026-08-19). W1은 곱수가 1이라 이 어긋남이 안 보인다.
++  const budgetValue = Number(selected?.budget ?? 0)
+   const progress = lastIndex === 0 ? 0 : (safeIndex / lastIndex) * 100
+ 
+   if (!selected) {
