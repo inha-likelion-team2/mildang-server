@@ -18,6 +18,15 @@ public class HealthController {
 
     private static final Logger log = LoggerFactory.getLogger(HealthController.class);
 
+    /**
+     * 지금 떠 있는 게 «어느 코드»인지. 배포가 실제로 붙었는지 밖에서 확인할 유일한 방법이다.
+     *
+     * <p>이게 없어서 두 번 막혔다 — Railway가 «성공»이라고 하는데 동작이 안 바뀌면,
+     * 빌드가 실패한 건지 옛 이미지가 그대로 떠 있는 건지 응답만 봐서는 구분할 수 없다.
+     * 커밋마다 손으로 올린다. 정확한 시각보다 «바뀌었는지»가 중요하다.
+     */
+    private static final String CODE_VERSION = "2026-08-19-survey-amount-weight";
+
     private final JdbcTemplate jdbcTemplate;
 
     public HealthController(DataSource dataSource) {
@@ -32,8 +41,9 @@ public class HealthController {
             jdbcTemplate.queryForObject("SELECT 1", Integer.class);
         } catch (RuntimeException e) {
             log.error("health check failed — db unreachable", e);
-            return ResponseEntity.status(503).body(Map.of("status", "down", "db", "unreachable"));
+            return ResponseEntity.status(503)
+                    .body(Map.of("status", "down", "db", "unreachable", "codeVersion", CODE_VERSION));
         }
-        return ResponseEntity.ok(Map.of("status", "ok", "db", "ok"));
+        return ResponseEntity.ok(Map.of("status", "ok", "db", "ok", "codeVersion", CODE_VERSION));
     }
 }
