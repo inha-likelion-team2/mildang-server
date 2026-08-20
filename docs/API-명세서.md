@@ -96,6 +96,7 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 
 | 날짜 | 변경 |
 |------|------|
+| 2026-08-20 | **완주 리포트 데모 데이터** — ① `COMPLETED` 시드가 계정마다 다른 판을 준다(judge-03=W1 성공 94% · judge-04=W4 65% · judge-05=**W2 예산 초과 112%**). 표에 없는 계정은 해시로 고정 배정 ② `W2_DAY8`·`W4_DAY12` 시드에 기간에 맞는 체크인·체중을 넣어, 완주시키면 `bodyChanges` 4칸이 다 찬다(65→63kg · 75→73kg) ③ `VS_BUDGET` 부호는 **`leftover` 유지**(덜 쓰면 양수) — 규칙표와 어긋나던 예시 `-5`를 `+5`로 고침. 응답 변경 없음 ④ 리포트 `completion` 블록을 본문에 명세. ⚠ 시드 시작 시각을 05:00 KST 경계에 맞춰 `advance-day` 호출 수가 시연 시각과 무관해졌다(전에는 오전에 한 번 더 필요) |
 | 2026-08-19 (2) | **`GET /challenges/current`가 완주 시 404 대신 200 + `status:"COMPLETED"`**. 신규 유저(404)와 구분이 안 돼 완주자가 온보딩으로 되돌아가던 문제(FE 제보). 쓰기 경로는 여전히 404, `COMPLETED`면 `tip`은 `null` |
 | 2026-08-19 | **설문 `portion` → `amount` 개명**(옛 이름도 계속 받음) + **`survey.weightKg` 추가**. 이름이 어긋나 FE가 보낸 `amount`가 조용히 버려지고 있었다 — 많이 먹는 사람도 전부 `NORMAL`로 계산됨. 체중은 60kg 기준 ±15%로 추정에 반영. `situation`은 계속 예산 미반영(팀 결정 유지). `POST /budget`은 최상위 `weightKg`도 계속 받는다 |
 | 2026-08-18 (12) | **CORS preflight(OPTIONS)를 인증에서 제외.** 브라우저는 preflight에 `Authorization`을 싣지 않으므로 토큰을 요구하면 다른 오리진의 FE가 보호된 경로를 아예 못 부른다. 이전에는 500이 나갔다(preflight의 handler가 컨트롤러가 아니라 `PreFlightHandler`라 전역 예외 핸들러가 못 잡음). **본 요청의 인증은 그대로** |
@@ -537,7 +538,7 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 - 기록이 없으면 `{"count": 0, "totalPoints": 0, "items": []}`입니다(필드 자체는 항상 있음).
 - 선차감(`PREPAID`)은 여기 안 들어옵니다. `prepaidItems`에 있다가 약속 요일이 지나면 배치가 `RECORDED`로 넘기고, 그날 `today`에 나타납니다.
 
-> **완주 후에는 이 API가 404입니다.** (기간이 끝나면 `COMPLETED`로 전환하고 404를 던집니다.) 마지막 챌린지를 조회하는 API가 없으므로, 프론트가 `challengeId`를 로컬에 보관했다가 `GET /challenges/{id}/report`로 진입해야 합니다.
+> **완주 후에도 이 API는 200입니다** — `status: "COMPLETED"`와 `challenge.id`가 그대로 옵니다(위 §3 `GET /challenges/current` 참조). 그 `id`로 `GET /challenges/{id}/report`를 부르면 됩니다. 404는 **챌린지를 한 번도 안 만든 사람**뿐입니다.
 
 ---
 
@@ -1101,7 +1102,7 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
   "title": "당신의 몸이 쓴 리포트",
   "stats": [
     { "key": "TOTAL_SPENT", "label": "총 소비",   "value": "80",  "sub": "/85" },
-    { "key": "VS_BUDGET",   "label": "예산 대비", "value": "-5",  "sub": null },
+    { "key": "VS_BUDGET",   "label": "예산 대비", "value": "+5",  "sub": null },
     { "key": "PEAK_SLOT",   "label": "최다 소비", "value": "금 저녁", "sub": null }
   ],
   "finding": {
@@ -1119,7 +1120,19 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
   },
   "disclaimer": "이 리포트는 의학적 진단이 아닌 본인 기록 기반 관찰입니다.",
   "nextChallenge": { "period": "W1", "optionKey": "HARD",
-                     "suggestedBudget": 75, "ctaLabel": "재대결 받기 · 이번엔 75" }
+                     "suggestedBudget": 75, "ctaLabel": "재대결 받기 · 이번엔 75" },
+  "completion": {
+    "periodLabel": "1주 챌린지 완주 🎉",
+    "headline": "이번 판 밀당 성공 !",
+    "usedPercent": 94, "totalBudget": 85, "spent": 80, "leftover": 5,
+    "summaryLine": "처음 85에서 시작해, 5을 남기고 완주했어요!",
+    "bodyChanges": [
+      { "key": "WEIGHT", "label": "체중 변화",   "value": "58kg → 54kg", "note": "4kg 줄었어요" },
+      { "key": "BLOAT",  "label": "붓기 효과",   "value": "보통 → 좋음",  "note": null },
+      { "key": "SKIN",   "label": "피부 트러블", "value": "0회 → 0회",    "note": null },
+      { "key": "DROWSY", "label": "식곤증 개선", "value": "33% 개선",     "note": null }
+    ]
+  }
 }
 ```
 
@@ -1129,13 +1142,19 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 | `stats` | **항상 3개** — `TOTAL_SPENT` · `VS_BUDGET` · `PEAK_SLOT` 순서 고정 |
 | `stats[].value` | **문자열**입니다. `VS_BUDGET`은 양수면 `+`가 붙고 음수는 그대로. 데이터가 없으면 `PEAK_SLOT`은 `"—"` |
 | `stats[0]` `TOTAL_SPENT` | **선차감(`prepaid`) 포함** — 예산에서 빠져나간 총액 |
-| `stats[1]` `VS_BUDGET` | **남은 예산** = 대시보드 `budget.balance`와 같은 값·같은 부호. 음수면 초과 |
+| `stats[1]` `VS_BUDGET` | **남은 예산** = `budget.total − 총 소비` = 대시보드 `budget.balance` = `completion.leftover`와 **같은 값·같은 부호**. ⚠ `소비 − 예산`이 **아닙니다** — **덜 쓰면 양수(`+5`)**, 초과하면 음수(`-20`). 공유 카드도 이 부호 그대로 읽으면 됩니다 |
 | `finding.available` | `false`면 `headline`·`metric`·`sampleNote`가 전부 `null`로 옵니다. **발견 영역만 숨기고 나머지는 정상 표시** — 리포트는 항상 생성됩니다 |
 | `finding.metric.thresholdPoints` | 항상 **40** |
 | `finding.sampleNote` | 항상 동반해서 보여주세요 (N=1 데이터라서) |
 | `haggleHighlight.best` | 흥정 이력이 없으면 `null` |
 | `nextChallenge.suggestedBudget` | ⚠ **주간값**입니다. `ctaLabel`의 숫자는 기간 총액이라 W2·W4에서는 둘이 다릅니다 |
 | `nextChallenge.ctaLabel` | 그대로 버튼 문구로 사용 |
+| `completion` | 화면 7(확정 와이어프레임 231:1237)을 **이 블록 하나로** 그립니다. `periodLabel`·`headline`·`summaryLine`은 문구 그대로 쓰세요 |
+| `completion.usedPercent` | `spent / totalBudget`의 반올림. **100을 넘을 수 있습니다**(예산 초과 완주) — 게이지에 상한을 두려면 화면에서 자르세요 |
+| `completion.leftover` | `totalBudget − spent`. **초과면 음수**입니다. `stats[1]` `VS_BUDGET`과 같은 값 |
+| `completion.headline` | 초과해도 판정하지 않습니다 — 남았으면 `"이번 판 밀당 성공 !"`, 초과면 `"이번 판, 끝까지 갔어요 !"` |
+| `completion.bodyChanges` | **항상 4개** — `WEIGHT` · `BLOAT` · `SKIN` · `DROWSY` 순서 고정 |
+| `completion.bodyChanges[].value` | 재료가 모자라면 **`null`** — 그때는 `note`(`"기록이 모자라요"` 등)를 대신 그리세요. 체중은 **두 번 이상** 재야, 나머지는 체크인이 **2일 이상** 있어야 값이 나옵니다 |
 
 ### `POST /challenges/{id}/report/share-card` → **201** — 공유 카드
 
@@ -1212,6 +1231,43 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 | `demo-judge-04` | W4 12일차 |
 | `demo-judge-05` | W2 (결제 플로우 시연) |
 
+#### `COMPLETED`는 계정마다 다른 판을 줍니다
+
+시나리오 이름은 하나지만, **로그인한 계정에 따라 다른 완주 리포트**가 나옵니다. 심사위원이 각자
+로그인해서 시드하면 화면 7이 서로 다르게 보입니다.
+
+| idToken | 기간 | `usedPercent` | 예산 / 소비 | 체중 | `finding.metric` |
+|---------|------|---------------|-------------|------|------------------|
+| `demo-judge-03` | W1 | 94% | 85 / 80 | 58kg → 54kg | `BLOAT` · 9.0 |
+| `demo-judge-04` | W4 | 65% | 340 / 220 | 72kg → 68.5kg | `BLOAT` · 7.0 |
+| `demo-judge-05` | **W2 예산 초과** | **112%** | 170 / 190 | 61kg → 61.5kg (늘었어요) | `BLOAT` · 4.7 |
+
+- **`demo-judge-05`가 초과 완주 케이스**입니다 — `usedPercent > 100` · `leftover: -20` ·
+  `headline: "이번 판, 끝까지 갔어요 !"` · `VS_BUDGET: "-20"`. 초과 화면은 여기서 확인하세요.
+- 표에 없는 계정은 계정 키 해시로 셋 중 하나에 **고정 배정**됩니다 — 같은 계정은 몇 번을 다시
+  시드해도 같은 판이 나옵니다. (참고: `demo-judge-01`은 W4, `demo-judge-02`는 W2 초과로 떨어집니다.)
+- `W2_DAY8` · `W4_DAY12` 시드에도 **기간에 맞는 체크인·체중이 들어 있습니다**. `advance-day`로
+  완주까지 돌리면 `completion.bodyChanges` 4칸이 다 차고 `finding.available`도 `true`입니다
+  (각각 65kg → 63kg · 75kg → 73kg). 오늘 자 체크인·체중은 넣지 않으므로 「오늘 체크인」 흐름도
+  그대로 시연할 수 있습니다.
+
+#### `advance-day`로 완주시키기 — 마지막 날까지 간 뒤 **한 번 더**
+
+`{"days": N}`으로 `dayIndex`가 `totalDays`에 닿아도 그날은 **아직 진행 중**이라 `ACTIVE`입니다.
+마지막 날을 *넘겨야* `COMPLETED`가 되므로 **한 번 더** 부르세요. 의도된 동작입니다 — 마지막 날에
+바로 끝내면 하루를 잃습니다.
+
+```
+W2_DAY8  → advance-day {"days":6}   → dayIndex 14, ACTIVE
+         → advance-day {"days":1}   → COMPLETED
+W4_DAY12 → advance-day {"days":16}  → dayIndex 28, ACTIVE
+         → advance-day {"days":1}   → COMPLETED
+```
+
+- 완주로 넘어간 그 응답에 `status: "COMPLETED"` · `completed: true`가 바로 담깁니다.
+- 필요한 호출 수는 항상 `totalDays − dayIndex + 1`일입니다. (시드 시작 시각을 논리적 하루의
+  경계인 05:00 KST에 맞춰 둬서, **시연하는 시각과 무관하게** 이 횟수로 떨어집니다.)
+
 ---
 
 ## 12. 프론트 체크리스트
@@ -1225,7 +1281,7 @@ d.tip?.text;             // 밀당이 말풍선 (없으면 영역 숨기기)
 - [ ] 에러는 `error.message`를 그대로 노출
 - [ ] 메뉴 식별 실패는 **422 에러 응답**이고 후보는 `error.detail.candidates`
 - [ ] `challenge.label`·`report.challenge.label`에 일차·완주 문구가 이미 포함 (중복 표기 금지)
-- [ ] 완주 대비 `challengeId` 로컬 보관 (`current`가 404가 되므로)
+- [ ] 완주 후에도 `GET /challenges/current`가 **200 + `status:"COMPLETED"`**로 옵니다 — 거기 담긴 `challenge.id`로 리포트에 진입하세요. 404는 진짜 신규 유저뿐입니다
 - [ ] 카메라 촬영은 canvas → JPEG blob (HEIC 회피). 카메라는 HTTPS에서만 동작
 - [ ] 스캔은 20초 이상 걸릴 수 있으므로 로딩 UX 필수
 - [ ] 429 재시도 로직 불필요 (레이트 리밋 미구현)
