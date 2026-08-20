@@ -23,7 +23,6 @@ import app.mildang.item.SourceType;
 import app.mildang.payment.PaymentRepository;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import org.springframework.context.annotation.Profile;
@@ -44,18 +43,21 @@ public class DemoSeedService {
     private final CheckinRepository checkinRepository;
     private final PaymentRepository paymentRepository;
     private final app.mildang.weight.WeightRepository weightRepository;
+    private final app.mildang.user.UserRepository userRepository;
 
     private int runningBalance; // 차감 시드 항목의 잔액 스냅샷 재현용
     private int runningPrepaid;
 
     public DemoSeedService(ChallengeRepository challengeRepository, ItemRepository itemRepository,
                            CheckinRepository checkinRepository, PaymentRepository paymentRepository,
-                            app.mildang.weight.WeightRepository weightRepository) {
+                            app.mildang.weight.WeightRepository weightRepository,
+                            app.mildang.user.UserRepository userRepository) {
         this.challengeRepository = challengeRepository;
         this.itemRepository = itemRepository;
         this.checkinRepository = checkinRepository;
         this.paymentRepository = paymentRepository;
         this.weightRepository = weightRepository;
+        this.userRepository = userRepository;
     }
 
     @Transactional
@@ -109,18 +111,66 @@ public class DemoSeedService {
         return finalize(c);
     }
 
-    /** judge-05: W2 8일차 — 총 170, spent 75 · prepaid 5 · balance 90 (§14.5) */
+    /**
+     * judge-05: W2 8일차 — 총 170, spent 75 · prepaid 5 · balance 90 (§14.5).
+     *
+     * <p>체크인·체중은 «여기서 advance-day로 끝까지 돌린 뒤의 리포트»를 위한 재료다. 없던 시절엔
+     * 완주시켰을 때 「내 몸의 변화」 4칸이 전부 「기록이 모자라요」로 비고 `finding.available`도
+     * false였다 (FE 제보 2026-08-20 ②). 오늘 것은 넣지 않는다 — 대시보드의 «오늘 체크인» 자리는
+     * 비어 있어야 그 흐름도 같이 시연된다.
+     */
     private Challenge w2Day8(String userId) {
         Challenge c = challenge(userId, Period.W2, 85, 7, ChallengeStatus.ACTIVE);
         record(c, "칼국수", "1그릇", 80, Confidence.CERTAIN, "면 전체가 밀 — 기준 앵커 메뉴", 5, "면 반 그릇 + 계란|40|4");
         record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 3, null);
         record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 1, null);
         promisePrepaid(c, "저녁", "1끼", 5, "된장찌개 기준", Weekday.SAT, 2);
+        // 고섭취 40(D-5) 다음날(D-4) BLOAT=BAD → 발견 ratio 3.0
+        checkin(c, 6, ConditionValue.MID, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 5, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 4, ConditionValue.BAD, ConditionValue.MID, ConditionValue.BAD);
+        checkin(c, 3, ConditionValue.MID, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 2, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        weight(c, 6, "65.0");
+        weight(c, 4, "64.5");
+        weight(c, 2, "63.5");
+        weight(c, 1, "63.0");
         return finalize(c);
     }
 
-    /** W1 완주 — 총소비 80, 체크인 6/7일, 40+ 섭취 다음날 BLOAT=BAD (리포트 발견 재료) */
+    /**
+     * 완주 시드는 «계정마다 다른 리포트»를 준다 — 심사위원이 누구로 로그인하든 94% · 85/80 ·
+     * 58kg→54kg이 똑같이 나와서, 화면 7이 한 장짜리 스크린샷처럼 보였다 (FE 제보 2026-08-20).
+     *
+     * <p>계정 키(= demo idToken)로 갈라 붙이고, 표에 없는 계정은 문자열 해시로 셋 중 하나에
+     * 고정 배정한다 — 같은 계정은 몇 번을 다시 시드해도 같은 판이 나와야 시연 중에 말이 꼬이지 않는다.
+     */
     private Challenge completed(String userId) {
+        return switch (completedVariant(userId)) {
+            case W4 -> completedW4(userId);
+            case W2_OVER -> completedW2Over(userId);
+            case W1 -> completedW1(userId);
+        };
+    }
+
+    private enum CompletedVariant { W1, W4, W2_OVER }
+
+    /** judge-03=W1 성공 · judge-04=W4 완주 · judge-05=W2 예산 초과 (FE 요청 2026-08-20 ①-B) */
+    private CompletedVariant completedVariant(String userId) {
+        String account = userRepository.findById(userId)
+                .map(app.mildang.user.User::getProviderSub).orElse(userId);
+        return switch (account) {
+            case "demo-judge-03" -> CompletedVariant.W1;
+            case "demo-judge-04" -> CompletedVariant.W4;
+            case "demo-judge-05" -> CompletedVariant.W2_OVER;
+            default -> CompletedVariant.values()[Math.floorMod(account.hashCode(),
+                    CompletedVariant.values().length)];
+        };
+    }
+
+    /** W1 완주 — 총소비 80 / 85(94%), 체크인 6/7일, 40+ 섭취 다음날 BLOAT=BAD (ratio 9.0) */
+    private Challenge completedW1(String userId) {
         Challenge c = challenge(userId, Period.W1, 85, 8, ChallengeStatus.COMPLETED);
         haggledRecorded(c, "라면", "1봉지", 80, "면 전체가 밀 — 봉지라면 1인분", "반봉지 + 계란", 40, 4, 6);
         record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 5, null);
@@ -142,12 +192,95 @@ public class DemoSeedService {
         return finalize(c);
     }
 
-    /** judge-04: W4 12일차 — 총 340, spent 60 · balance 280 (§14.5) */
+    /**
+     * W4 완주 — 총소비 220 / 340(65%), 체크인 14/28일, 72kg → 68.5kg (ratio 7.0).
+     * 긴 판이라 흥정 두 번·고섭취 세 번이 들어간다.
+     */
+    private Challenge completedW4(String userId) {
+        Challenge c = challenge(userId, Period.W4, 85, 29, ChallengeStatus.COMPLETED);
+        haggledRecorded(c, "칼국수", "1그릇", 80, "면 전체가 밀 — 기준 앵커 메뉴", "면 반 그릇 + 계란", 40, 5, 24);
+        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 20, null);
+        haggledRecorded(c, "라면", "1봉지", 80, "면 전체가 밀 — 봉지라면 1인분", "반봉지 + 계란", 40, 4, 17);
+        record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 14, null);
+        record(c, "짜장면", "1그릇", 60, Confidence.CERTAIN, "면·춘장 둘 다 밀", 10, null);
+        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 7, null);
+        record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 4, null);
+        record(c, "김밥", "1줄", 20, Confidence.HIGH, "단무지·어묵에 소량", 2, null);
+        // 고섭취일(D-24 · D-17 · D-10) 다음날만 BLOAT=BAD — 앞 절반이 나쁘고 뒤 절반이 좋아진다
+        checkin(c, 27, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 25, ConditionValue.MID, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 23, ConditionValue.BAD, ConditionValue.MID, ConditionValue.BAD);
+        checkin(c, 21, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.MID);
+        checkin(c, 19, ConditionValue.MID, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 16, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 14, ConditionValue.MID, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 12, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        checkin(c, 9, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.MID);
+        checkin(c, 7, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        checkin(c, 5, ConditionValue.GOOD, ConditionValue.MID, ConditionValue.GOOD);
+        checkin(c, 3, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 2, ConditionValue.MID, ConditionValue.GOOD, ConditionValue.GOOD);
+        checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        weight(c, 27, "72.0");
+        weight(c, 20, "71.0");
+        weight(c, 13, "70.0");
+        weight(c, 6, "69.0");
+        weight(c, 1, "68.5");
+        c.setCompletedAt(Instant.now());
+        return finalize(c);
+    }
+
+    /**
+     * W2 예산 초과 완주 — 총소비 190 / 170(112%), leftover −20, 61kg → 61.5kg (ratio 4.7).
+     * 「usedPercent > 100」·「체중이 늘었어요」·초과 헤드라인을 실서버로 볼 수 있는 유일한 판이다
+     * (FE 제보 2026-08-20: 성공 케이스만 있어 초과 화면을 확인할 방법이 없었다).
+     */
+    private Challenge completedW2Over(String userId) {
+        Challenge c = challenge(userId, Period.W2, 85, 15, ChallengeStatus.COMPLETED);
+        record(c, "칼국수", "1그릇", 80, Confidence.CERTAIN, "면 전체가 밀 — 기준 앵커 메뉴", 12, null);
+        haggledRecorded(c, "라면", "1봉지", 80, "면 전체가 밀 — 봉지라면 1인분", "반봉지 + 계란", 40, 3, 9);
+        record(c, "짜장면", "1그릇", 60, Confidence.CERTAIN, "면·춘장 둘 다 밀", 6, null);
+        record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 3, null);
+        record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 1, null);
+        // 고섭취일(D-12 · D-9 · D-6) 다음날 BLOAT=BAD. 붓기는 「보통 → 보통」 — 예산을 넘긴 판이라
+        // 몸도 극적으로 좋아지지 않는다 (성공 판과 다른 그림이 나와야 데모가 한 장으로 안 보인다)
+        checkin(c, 13, ConditionValue.GOOD, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 11, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.MID);
+        checkin(c, 10, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 8, ConditionValue.BAD, ConditionValue.BAD, ConditionValue.MID);
+        checkin(c, 6, ConditionValue.MID, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 5, ConditionValue.BAD, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 4, ConditionValue.MID, ConditionValue.GOOD, ConditionValue.GOOD);
+        checkin(c, 3, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 2, ConditionValue.GOOD, ConditionValue.MID, ConditionValue.GOOD);
+        checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        weight(c, 13, "61.0");
+        weight(c, 9, "60.5");
+        weight(c, 5, "61.0");
+        weight(c, 1, "61.5");
+        c.setCompletedAt(Instant.now());
+        return finalize(c);
+    }
+
+    /** judge-04: W4 12일차 — 총 340, spent 60 · balance 280 (§14.5). 체크인·체중은 {@link #w2Day8} 참조 */
     private Challenge w4Day12(String userId) {
         Challenge c = challenge(userId, Period.W4, 85, 11, ChallengeStatus.ACTIVE);
         record(c, "칼국수", "1그릇", 80, Confidence.CERTAIN, "면 전체가 밀 — 기준 앵커 메뉴", 9, "면 반 그릇 + 계란|40|5");
         record(c, "제육볶음", "1인분", 15, Confidence.MEDIUM, "시판 고추장 베이스로 추정", 4, null);
         record(c, "된장찌개", "1그릇", 5, Confidence.HIGH, "된장에 미량 — 시판 된장 기준", 1, null);
+        // 고섭취 40(D-9) 다음날(D-8) BLOAT=BAD → 발견 ratio 4.0
+        checkin(c, 10, ConditionValue.MID, ConditionValue.BAD, ConditionValue.BAD);
+        checkin(c, 9, ConditionValue.BAD, ConditionValue.MID, ConditionValue.BAD);
+        checkin(c, 8, ConditionValue.BAD, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 7, ConditionValue.MID, ConditionValue.BAD, ConditionValue.MID);
+        checkin(c, 5, ConditionValue.MID, ConditionValue.MID, ConditionValue.MID);
+        checkin(c, 3, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.MID);
+        checkin(c, 2, ConditionValue.GOOD, ConditionValue.MID, ConditionValue.GOOD);
+        checkin(c, 1, ConditionValue.GOOD, ConditionValue.GOOD, ConditionValue.GOOD);
+        weight(c, 10, "75.0");
+        weight(c, 7, "74.5");
+        weight(c, 4, "74.0");
+        weight(c, 1, "73.0");
         return finalize(c);
     }
 
@@ -177,11 +310,19 @@ public class DemoSeedService {
 
     // ---- 빌더 ----
 
-    /** weeklyBudget × 곱수 = 기간 총액 (v1.3 §0.10). AS_IS 기준 시드 */
+    /**
+     * weeklyBudget × 곱수 = 기간 총액 (v1.3 §0.10). AS_IS 기준 시드.
+     *
+     * <p>시작 시각은 <b>05:00 KST — 논리적 하루의 시작</b>에 맞춘다. 정오로 잡았더니 endsAt이
+     * 11:59:59가 되어 논리적 경계(05:00)와 7시간 어긋났고, 「마지막 날까지 간 뒤 하루 더」가
+     * <b>시연 시각에 따라</b> 한 번이 되기도 두 번이 되기도 했다 — 오전 10시에 시연하면
+     * advance-day를 한 번 더 눌러야 완주했다. 경계에 붙이면 남은 호출 수가 항상
+     * {@code totalDays − dayIndex + 1}로 떨어진다.
+     */
     private Challenge challenge(String userId, Period period, int weeklyBudget, int startDaysAgo,
                                 ChallengeStatus status) {
         LocalDate startDate = LogicalDate.of(Instant.now()).minusDays(startDaysAgo);
-        Instant startedAt = startDate.atTime(LocalTime.NOON).atZone(LogicalDate.KST).toInstant();
+        Instant startedAt = startDate.atTime(LogicalDate.BOUNDARY).atZone(LogicalDate.KST).toInstant();
         int totalBudget = weeklyBudget * period.weeks();
 
         Challenge c = new Challenge();

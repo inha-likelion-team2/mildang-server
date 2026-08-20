@@ -117,8 +117,10 @@ public class ReportService {
         java.math.BigDecimal first = logs.getFirst().getWeightKg();
         java.math.BigDecimal last = logs.getLast().getWeightKg();
         java.math.BigDecimal delta = last.subtract(first);
+        // 소수점 0은 note에서도 뗀다 — 「58kg → 54kg」 옆에 「4.0kg 줄었어요」가 붙어 한 칸 안에서
+        // 표기가 어긋나 보였다
         String note = delta.signum() == 0 ? "그대로예요"
-                : delta.abs().toPlainString() + "kg " + (delta.signum() < 0 ? "줄었어요" : "늘었어요");
+                : trim(delta.abs()) + "kg " + (delta.signum() < 0 ? "줄었어요" : "늘었어요");
         return new ReportDtos.BodyChange("WEIGHT", "체중 변화",
                 trim(first) + "kg → " + trim(last) + "kg", note);
     }
